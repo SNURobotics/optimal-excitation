@@ -12,7 +12,7 @@ function T=exp_se3(S)
         W = [0 -w(3) w(2);w(3) 0 -w(1);-w(2) w(1) 0];
 
         P = eye(3) + (1-cw)*wnorm_inv^2*W + (wnorm - sw)*wnorm_inv^3 * W^2;
-        T = [SO3_exp(w) P*v; zeros(1,3) 1];
+        T = [exp_so3(w) P*v; zeros(1,3) 1];
     else
         T = [eye(3) v; zeros(1,3) 1];
     end

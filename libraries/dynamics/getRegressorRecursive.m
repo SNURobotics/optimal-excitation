@@ -32,12 +32,15 @@ function [Y, varargout] = getRegressorRecursive(A,M,q,V,Vdot)
         T(:,:,i)    = exp_se3(-A(:,i)*q(i))*M(:,:,i);
         Ad_T(:,:,i) = large_Ad(T(:,:,i));
         
-        W(i,i) = convertVelocityToRegressor(Vdot(:,i)) - small_ad(V(:,i))'*convertVelocityToRegressor(V(:,i));
+        W(6*i-5:6*i,10*i-9:10*i) = convertVelocityToRegressor(Vdot(:,i)) - small_ad(V(:,i))'*convertVelocityToRegressor(V(:,i));
         for k = i+1:n
-            W(i,k) = Ad_T(:,:,i+1)'*W(i+1,k);
+            W(6*i-5:6*i,10*k-9:10*k) = Ad_T(:,:,i+1)'*W(6*i+1:6*i+6,10*k-9:10*k);
         end
     end
     
     Y = diagA'*W;
-    varargout{1} = W;
+    
+    if nargout > 1
+        varargout{1} = W;
+    end
 end

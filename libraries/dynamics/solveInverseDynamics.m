@@ -80,7 +80,9 @@ function [tau, varargout] = solveInverseDynamics(A,M,q,qdot,qddot,G,varargin)
         tau(i) = A(:,i)'*F(:,i);
     end
     
-    varargout{1} = V;
-    varargout{2} = Vdot;
-    varargout{3} = F;    
+    if nargout > 1
+        varargout{1} = V;
+        varargout{2} = Vdot;
+        varargout{3} = F;    
+    end
 end

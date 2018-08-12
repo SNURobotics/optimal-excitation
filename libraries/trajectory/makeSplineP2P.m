@@ -1,8 +1,10 @@
-%% B-Spline Generator with m number of Parameters
+%% Point-to-Point B-Spline Generator with m number of Parameters
 % 2018 Bryan Dongik Lee
 
 %% Inputs
 % [Name]       [Description]                      [Size]
+%  qi           initial point                      n*1
+%  qf           final point                        n*1
 %  params       spline coefficients                m*n     (parameter num * joints num)
 %  order        order of spline basis functions    1*1
 %  horizon      total time horizon                 1*1
@@ -16,12 +18,22 @@
 %  If t is specified, return real-valued vectors   n*k
 
 %% Implementation
-function [sp, varargout] = makeSpline(params, order, horizon, varargin)
+function [sp, varargout] = makeSplineP2P(qi, qf, params, order, horizon, varargin)
     n = size(params,2);
     m = size(params,1);
     
-    num_knots = m + order;
-    knots = linspace(0, horizon, num_knots);
+    pi = zeros(order,n);
+    pf = zeros(order,n);
+    for k = 1:order
+        pi(k,:) = qi';
+        pf(k,:) = qf';
+    end
+    params = [pi; params; pf];
+    
+    num_knots = m + 3*order;
+    knots = zeros(0, num_knots);
+    knots(1,num_knots-order+1:num_knots) = horizon;
+    knots(1,order+1:num_knots-order) = linspace(0, horizon, num_knots - 2*order);
     
     for i = 1:n
         sp(i)     = spmak(knots, params(:,i)');
@@ -29,8 +41,8 @@ function [sp, varargout] = makeSpline(params, order, horizon, varargin)
         spddot(i) = fnder(spdot(i));
     end
     
-    if     nargin == 3
-    elseif nargin == 4   % if time specified
+    if     nargin == 5
+    elseif nargin == 6   % if time specified
         t = varargin{1};
         num_t = size(t,2);
         q = zeros(n, num_t);

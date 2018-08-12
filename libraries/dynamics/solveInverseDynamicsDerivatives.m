@@ -7,13 +7,13 @@
 %  M            initial relative frames M_{i,i-1}  4*4*n
 %  q            joint angles                       n*1
 %  qdot         joint vleocities                   n*1
-%  qddot        joint accelerations                n*1
 %  G            link inertial matrices             6*6*n
 %  V            spatial velocities                 6*n
 %  Vdot         spatial accelerations              6*n
 %  dq           dq/dp                              n*m,   m = num of parameters
 %  dqdot        dqdot/dp                           n*m
 %  dqddot       dqddot/dp                          n*m
+%  F            wrenches                           6*n
 %  Vdot_0       (optional) base acceleration       6*1
 
 %% Outputs
@@ -24,11 +24,11 @@
 %  dF      (optional) derivative of wrenches                6*n*m
 
 %% Examples
-% dtau = solveInverseDynamicsDerivatives(A,M,q,qdot,qddot,G,V,Vdot,dq,dqdot,dqddot)
-% [dtau, dV, dVdot, dF] = solveInverseDynamicsDerivatives(A,M,q,qdot,qddot,G,V,Vdot,dq,dqdot,dqddot)
+% dtau = solveInverseDynamicsDerivatives(A,M,q,qdot,G,V,Vdot,dq,dqdot,dqddot,F)
+% [dtau, dV, dVdot, dF] = solveInverseDynamicsDerivatives(A,M,q,qdot,G,V,Vdot,dq,dqdot,dqddot,F)
 
 %% Implementation
-function [dtau, varargout] = solveInverseDynamicsDerivatives(A,M,q,qdot,qddot,G,V,Vdot,dq,dqdot,dqddot,varargin)
+function [dtau, varargout] = solveInverseDynamicsDerivatives(A,M,q,qdot,G,V,Vdot,dq,dqdot,dqddot,F,varargin)
     %% Initialization
     n      = size(q,1);         % number of joints
     m      = size(dq,2);        % number of parameters
@@ -87,8 +87,10 @@ function [dtau, varargout] = solveInverseDynamicsDerivatives(A,M,q,qdot,qddot,G,
             dtau(i,p) = A(:,i)'*dF(:,i,p);
         end
     end
-    
-    varargout{1} = dV;
-    varargout{2} = dVdot;
-    varargout{3} = dF;    
+
+    if nargout > 1
+        varargout{1} = dV;
+        varargout{2} = dVdot;
+        varargout{3} = dF;
+    end
 end
