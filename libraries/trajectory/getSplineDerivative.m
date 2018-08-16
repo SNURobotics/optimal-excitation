@@ -9,7 +9,7 @@
 %  t            (optional) user specified times    1*k     (1*desired number of frames)
 
 %% Outputs
-% [Name]       [Description]                      [Size]
+% [Name]       [Description]                                  [Size]
 %  dsp           spline pos derivative functions               struct n*m
 %  dspdot        (optional) spline vel derivative functions    struct n*m
 %  dspddot       (optional) spline acc derivative functions    struct n*m

@@ -1,3 +1,4 @@
+%% Large Adjoint Matrix of SE(3)
 function AdT=large_Ad(T)
     if(size(T) == [4 4])
         R=T(1:3,1:3);

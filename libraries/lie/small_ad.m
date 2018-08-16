@@ -1,3 +1,4 @@
+%% Small Adjoint Matrix of se(3)
 function adV=small_ad(V)
     if(size(V) == [6,1])
         w=V(1:3,1);

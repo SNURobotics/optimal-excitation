@@ -1,4 +1,4 @@
-%% Compute the Objective Matrix C = sum[Y_B'*Sigma^-1*Y_B]B*G(phi_0)*B' and Its Derivative dC/dP
+%% Compute the Objective Matrix C = sum[Y_B'*Sigma^-1*Y_B] and Its Derivative dC/dP
 % 2018 Bryan Dongik Lee
 
 %% Inputs
@@ -11,7 +11,7 @@
 %% Outputs
 
 %% Implementation
-function [C, gradC] = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
+function [C, gradC] = getObjectiveMatrixCNoMetric(p, robot, trajectory, sigma_inv)
     %% Initialization
     n = robot.dof;        % number of joints
     m = size(p,1);        % number of parameters
@@ -19,8 +19,6 @@ function [C, gradC] = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
     % dynamic parameters
     B = robot.B;
     num_base = size(B,1);
-    mertic_Phi = robot.pd_metric_Phi;    % metric
-    B_metric_inv_Bt = robot.B_metric_inv_Phi_Bt;
     
     G = zeros(6,6,n);   % dummy value
     
@@ -64,10 +62,6 @@ function [C, gradC] = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
         end
     end
     
-    C = sum_A * B_metric_inv_Bt * sample_interval;
-    gradC = zeros(num_base,num_base,m); 
-    for k = 1:m
-        gradC(:,:,k) = sum_dA(:,:,k) * B_metric_inv_Bt;
-    end
-    gradC = gradC * sample_interval;
+    C = sum_A * sample_interval;
+    gradC = sum_dA * sample_interval;
 end

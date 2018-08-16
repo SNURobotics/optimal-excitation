@@ -1,3 +1,4 @@
+%% Analytic exponential of small so(3)
 function R = exp_so3(w)
 eps=1e-14;
     wnorm_sq = w(1)^2 + w(2)^2 + w(3)^2;

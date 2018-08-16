@@ -1,4 +1,4 @@
-%% Objective Function and its Derivative: Condition Number
+%% Objective Function and its Derivative: Condition Number w/o Metric
 % 2018 Bryan Dongik Lee
 
 %% Inputs
@@ -14,8 +14,8 @@
 %  grad    derivative of condition number of C(p)      m*n
 
 %% Implementation
-function [f, grad] = getCondNumber(p, robot, trajectory, sigma_inv)
-    [C, gradC] = getObjectiveMatrixC(p, robot, trajectory, sigma_inv);
+function [f, grad] = getCondNumberNoMetric(p, robot, trajectory, sigma_inv)
+    [C, gradC] = getObjectiveMatrixCNoMetric(p, robot, trajectory, sigma_inv);
     
     % eigen decomposition
     [Q, D] = eig(C);    
