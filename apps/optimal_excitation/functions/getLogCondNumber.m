@@ -1,4 +1,4 @@
-%% Objective Function and its Derivative: Condition Number w/o Metric
+%% Objective Function and its Derivative: Condition Number
 % 2018 Bryan Dongik Lee
 
 %% Inputs
@@ -14,8 +14,8 @@
 %  grad    derivative of condition number of C(p)      m*n
 
 %% Implementation
-function [f, grad] = getCondNumberNoMetric(p, robot, trajectory, sigma_inv)
-    [C, gradC] = getObjectiveMatrixCNoMetric(p, robot, trajectory, sigma_inv);
+function [f, grad] = getLogCondNumber(p, robot, trajectory, sigma_inv)
+    [C, gradC] = getObjectiveMatrixC(p, robot, trajectory, sigma_inv);
     
     % eigen decomposition
     [Q, D] = eig(C);    
@@ -30,7 +30,7 @@ function [f, grad] = getCondNumberNoMetric(p, robot, trajectory, sigma_inv)
     max_ind = find(eigs == max_eig); max_ind = max_ind(1);
 
     % condition number cond(C)
-    f = max_eig/min_eig;
+    f = log(max_eig/min_eig);
 
     m = size(p,1);
     n = size(p,2);
@@ -40,8 +40,8 @@ function [f, grad] = getCondNumberNoMetric(p, robot, trajectory, sigma_inv)
     Qt = Q';
     for i = 1:m
         for j =1:n
-            grad(i,j) = (Qt(max_ind, :) * gradC(:,:,i) * Q(:, max_ind))/min_eig ...
-                        - (Qt(min_ind, :) * gradC(:,:,i) * Q(:, min_ind))*max_eig/(min_eig^2);
+            grad(i,j) = (Qt(max_ind, :) * gradC(:,:,i,j) * Q(:, max_ind))/max_eig ...
+                        - (Qt(min_ind, :) * gradC(:,:,i,j) * Q(:, min_ind))/min_eig;
         end
     end
 end

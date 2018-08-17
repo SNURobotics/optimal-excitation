@@ -8,22 +8,22 @@
 %  q            joint angles                         n*1
 %  V            spatial velocities                   6*n
 %  Vdot         spatial accelerations                6*n
-%  dq           joint angle derivative               n*m    m = num of parameters
-%  dV           spatial velocitie derivative         6*n*m
-%  dVdot        spatial acceleration derivative      6*n*m
+%  dq           joint angle derivative               n*m*n    m = num of parameters
+%  dV           spatial velocitie derivative         6*n*m*n
+%  dVdot        spatial acceleration derivative      6*n*m*n
 %  W            (optional) sub-regressor matrix      6n*10n
 
 %% Outputs
 % [Name]  [Description]                                [Size]
-%  dY      regressor derivative matrix                  n*10n*m
-%  dW      (optional) sub-regressor derivative matrix   6n*10n*m                      
+%  dY      regressor derivative matrix                  n*10n*m*n
+%  dW      (optional) sub-regressor derivative matrix   6n*10n*m*n                     
 
 %% Implementation
 function [dY, varargout] = getRegressorDerivativesRecursive(A,M,q,V,Vdot,dq,dV,dVdot,varargin)
     %% Initialization
     n      = size(q,1);         % number of joints
     m      = size(dq,2);        % number of parameters
-    dW     = zeros(6*n, 10*n, m);
+    dW     = zeros(6*n, 10*n, m, n);
     
     if     nargin == 8          % no optional inputs
         [Y, W] = getRegressorRecursive(A,M,q,V,Vdot);
@@ -47,17 +47,21 @@ function [dY, varargout] = getRegressorDerivativesRecursive(A,M,q,V,Vdot,dq,dV,d
         Ad_T(:,:,i) = large_Ad(T(:,:,i));
         
         for p=1:m
-            dW(6*i-5:6*i,10*i-9:10*i,p) = convertVelocityToRegressor(dVdot(:,i,p)) - small_ad(dV(:,i,p))'*convertVelocityToRegressor(V(:,i)) ...
-                         - small_ad(V(:,i))'*convertVelocityToRegressor(dV(:,i,p));
-            for k = i+1:n
-                dW(6*i-5:6*i,10*k-9:10*k,p) = Ad_T(:,:,i+1)'*dW(6*i+1:6*i+6,10*k-9:10*k,p) - Ad_T(:,:,i+1)'*small_ad(A(:,i+1))'*W(6*i+1:6*i+6,10*k-9:10*k)*dq(i+1,p);
+            for l = 1:n
+                dW(6*i-5:6*i,10*i-9:10*i,p,l) = convertVelocityToRegressor(dVdot(:,i,p,l)) - small_ad(dV(:,i,p,l))'*convertVelocityToRegressor(V(:,i)) ...
+                             - small_ad(V(:,i))'*convertVelocityToRegressor(dV(:,i,p,l));
+                for k = i+1:n
+                    dW(6*i-5:6*i,10*k-9:10*k,p,l) = Ad_T(:,:,i+1)'*dW(6*i+1:6*i+6,10*k-9:10*k,p,l) - Ad_T(:,:,i+1)'*small_ad(A(:,i+1))'*W(6*i+1:6*i+6,10*k-9:10*k)*dq(i+1,p,l);
+                end                
             end
         end
     end
     
-    dY = zeros(n, 10*n, m);
+    dY = zeros(n, 10*n, m, n);
     for p =1:m
-        dY(:,:,p) = diagA'*dW(:,:,p);
+        for l = 1:n
+            dY(:,:,p,l) = diagA'*dW(:,:,p,l);
+        end
     end
 
     if nargout > 1

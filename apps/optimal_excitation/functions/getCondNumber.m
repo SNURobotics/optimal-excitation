@@ -14,8 +14,12 @@
 %  grad    derivative of condition number of C(p)      m*n
 
 %% Implementation
-function [f, grad] = getCondNumber(p, robot, trajectory, sigma_inv)
-    [C, gradC] = getObjectiveMatrixC(p, robot, trajectory, sigma_inv);
+function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv)
+    if nargout == 1
+        C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv);
+    else
+        [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigma_inv);
+    end
     
     % eigen decomposition
     [Q, D] = eig(C);    
@@ -32,16 +36,19 @@ function [f, grad] = getCondNumber(p, robot, trajectory, sigma_inv)
     % condition number cond(C)
     f = max_eig/min_eig;
 
-    m = size(p,1);
-    n = size(p,2);
+    if nargout > 1
+        m = size(p,1);
+        n = size(p,2);
 
-    % grad cond(C)
-    grad = zeros(m,n);
-    Qt = Q';
-    for i = 1:m
-        for j =1:n
-            grad(i,j) = (Qt(max_ind, :) * gradC(:,:,i) * Q(:, max_ind))/min_eig ...
-                        - (Qt(min_ind, :) * gradC(:,:,i) * Q(:, min_ind))*max_eig/(min_eig^2);
+        % grad cond(C)
+        grad = zeros(m,n);
+        Qt = Q';
+        for i = 1:m
+            for j =1:n
+                grad(i,j) = (Qt(max_ind, :) * gradC(:,:,i,j) * Q(:, max_ind))/min_eig ...
+                            - (Qt(min_ind, :) * gradC(:,:,i,j) * Q(:, min_ind))*max_eig/(min_eig^2);
+            end
         end
+        varargout{1} = grad;
     end
 end

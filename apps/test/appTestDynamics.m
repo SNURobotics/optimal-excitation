@@ -32,7 +32,7 @@ phi(21:30,1) = convertInertiaGToPhi(G(:,:,3));
 tau_from_inverse_dynamics = tau
 tau_from_regressor        = Y*phi
 
-dq = [1,2,3;4,5,6;7,8,9];
+dq = rand(3,4,3);
 dqdot = dq;
 dqddot= dq;
 

@@ -1,4 +1,4 @@
-%% Compute the Objective Matrix C = sum[Y_B'*Sigma^-1*Y_B] and Its Derivative dC/dP
+%% Compute the Objective Matrix C = sum[Y_B'*Sigma^-1*Y_B]B*G(phi_0)*B' and Its Derivative dC/dP
 % 2018 Bryan Dongik Lee
 
 %% Inputs
@@ -9,9 +9,12 @@
 %  sigma_inv   inverse of torque covariance matrix                          n*n
 
 %% Outputs
+% [Name]      [Description]               [Size]
+%  C           objective matrix C          num_base*num_base                                          
+%  gradC       gradient of C               num_base*num_base*m*n
 
 %% Implementation
-function [C, gradC] = getObjectiveMatrixCNoMetric(p, robot, trajectory, sigma_inv)
+function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigma_inv)
     %% Initialization
     n = robot.dof;        % number of joints
     m = size(p,1);        % number of parameters
@@ -19,6 +22,8 @@ function [C, gradC] = getObjectiveMatrixCNoMetric(p, robot, trajectory, sigma_in
     % dynamic parameters
     B = robot.B;
     num_base = size(B,1);
+    mertic_Phi = robot.pd_metric_Phi;    % metric
+    B_metric_inv_Bt = robot.B_metric_inv_Phi_Bt;
     
     G = zeros(6,6,n);   % dummy value
     
@@ -34,9 +39,9 @@ function [C, gradC] = getObjectiveMatrixCNoMetric(p, robot, trajectory, sigma_in
     sample_interval  = horizon/num_sample;              % dt for numerical integration
 
     % size initialization
-    dY_B = zeros(n,num_base,m);
-    sum_A = zeros(num_base, num_base);
-    sum_dA = zeros(num_base, num_base,m);
+    dY_B = zeros(n,num_base,m,n,num_sample);
+    sum_A = zeros(num_base, num_base,num_sample);
+    sum_dA = zeros(num_base, num_base,m,n,num_sample);
     
     %% Integration
     
@@ -44,24 +49,31 @@ function [C, gradC] = getObjectiveMatrixCNoMetric(p, robot, trajectory, sigma_in
     [q, qdot, qddot]    = makeSpline(p, trajectory_order, horizon, sample_time);
     [dq, dqdot, dqddot] = getSplineDerivative(p, trajectory_order, horizon, sample_time);
 
-    for t=1:num_sample
-        % get V, Vdot, dV, dVdot from forward recursion, use dummy G and F
+    parfor t=1:num_sample
+        % get V, Vdot, dV, dVdot from forward recursion, use dummy G and F      
         [tau, V, Vdot, F] = solveInverseDynamics(A,M,q(:,t),qdot(:,t),qddot(:,t),G);
-        [dtau, dV, dVdot] = solveInverseDynamicsDerivatives(A,M,q(:,t),qdot(:,t),G,V,Vdot,dq(:,:,t),dqdot(:,:,t),dqddot(:,:,t),F);
+        [dtau, dV, dVdot] = solveInverseDynamicsDerivatives(A,M,q(:,t),qdot(:,t),G,V,Vdot,dq(:,:,:,t),dqdot(:,:,:,t),dqddot(:,:,:,t),F);
 
         % get Y, dY by recursion
         [Y, W] = getRegressorRecursive(A,M,q(:,t),V,Vdot);
-        dY = getRegressorDerivativesRecursive(A,M,q(:,t),V,Vdot,dq(:,:,t),dV,dVdot,W);
-        
+        dY = getRegressorDerivativesRecursive(A,M,q(:,t),V,Vdot,dq(:,:,:,t),dV,dVdot,W);
         Y_B = Y*B'*pinv(B*B');
-        sum_A = sum_A + Y_B'*sigma_inv*Y_B;
+        sum_A(:,:,t) = Y_B'*sigma_inv*Y_B;
 
         for k = 1:m
-            dY_B(:,:,k) = dY(:,:,k)*B'*pinv(B*B');
-            sum_dA(:,:,k) = sum_dA(:,:,k) + dY_B(:,:,k)'*sigma_inv*Y_B + Y_B'*sigma_inv*dY_B(:,:,k);
+            for l = 1:n
+                dY_B(:,:,k,l,t) = dY(:,:,k,l)*B'*pinv(B*B');
+                sum_dA(:,:,k,l,t) = dY_B(:,:,k,l,t)'*sigma_inv*Y_B + Y_B'*sigma_inv*dY_B(:,:,k,l,t);
+            end
         end
     end
     
-    C = sum_A * sample_interval;
-    gradC = sum_dA * sample_interval;
+    C = sum(sum_A,3) * B_metric_inv_Bt * sample_interval;
+    gradC = zeros(num_base,num_base,m,n); 
+    for k = 1:m
+        for l = 1:n
+            gradC(:,:,k,l) = sum(sum_dA(:,:,k,l,:), 5) * B_metric_inv_Bt;
+        end
+    end
+    gradC = gradC * sample_interval;
 end

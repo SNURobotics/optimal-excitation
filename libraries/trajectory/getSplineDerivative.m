@@ -6,17 +6,17 @@
 %  params       spline coefficients                m*n     (parameter num * joints num)
 %  order        order of spline basis functions    1*1
 %  horizon      total time horizon                 1*1
-%  t            (optional) user specified times    1*k     (1*desired number of frames)
+%  t            (optional) user specified times    1*t     (1*desired number of frames)
 
 %% Outputs
 % [Name]       [Description]                                  [Size]
-%  dsp           spline pos derivative functions               struct n*m
-%  dspdot        (optional) spline vel derivative functions    struct n*m
-%  dspddot       (optional) spline acc derivative functions    struct n*m
-%  If t is specified, return real-valued vectors   n*m*k
+%  dsp           spline pos derivative functions               struct n*m*n
+%  dspdot        (optional) spline vel derivative functions    struct n*m*n
+%  dspddot       (optional) spline acc derivative functions    struct n*m*n
+%  If t is specified, return real-valued vectors   n*m*n*t
 
 %% Implementation
-function [dsp, varargout] = makeSpline(params, order, horizon, varargin)
+function [dsp, varargout] = getSplineDerivative(params, order, horizon, varargin)
     n = size(params,2);
     m = size(params,1);
     
@@ -27,9 +27,9 @@ function [dsp, varargout] = makeSpline(params, order, horizon, varargin)
         for j = 1:m
             p_i = zeros(m,1);
             p_i(j) = 1;
-            dsp(i,j)     = spmak(knots, p_i');
-            dspdot(i,j)  = fnder(dsp(i,j));
-            dspddot(i,j) = fnder(dspdot(i,j));
+            dsp(i,j,i)     = spmak(knots, p_i');
+            dspdot(i,j,i)  = fnder(dsp(i,j,i));
+            dspddot(i,j,i) = fnder(dspdot(i,j,i)); 
         end
     end
     
@@ -37,15 +37,15 @@ function [dsp, varargout] = makeSpline(params, order, horizon, varargin)
     elseif nargin == 4   % if time specified
         t = varargin{1};
         num_t = size(t,2);
-        dq = zeros(n, m, num_t);
-        dqdot = zeros(n, m, num_t);
-        dqddot = zeros(n, m, num_t);
+        dq = zeros(n, m, n, num_t);
+        dqdot = zeros(n, m, n, num_t);
+        dqddot = zeros(n, m, n, num_t);
         
         for i = 1:n
             for j = 1:m
-                dq(i,j,:)     = fnval(dsp(i,j), t);
-                dqdot(i,j,:)  = fnval(dspdot(i,j), t);
-                dqddot(i,j,:) = fnval(dspddot(i,j), t);
+                dq(i,j,i,:)     = fnval(dsp(i,j,i), t);
+                dqdot(i,j,i,:)  = fnval(dspdot(i,j,i), t);
+                dqddot(i,j,i,:) = fnval(dspddot(i,j,i), t);
             end
         end
 

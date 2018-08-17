@@ -10,18 +10,18 @@
 %  G            link inertial matrices             6*6*n
 %  V            spatial velocities                 6*n
 %  Vdot         spatial accelerations              6*n
-%  dq           dq/dp                              n*m,   m = num of parameters
-%  dqdot        dqdot/dp                           n*m
-%  dqddot       dqddot/dp                          n*m
+%  dq           dq/dp                              n*m*n,   m = num of parameters per joint
+%  dqdot        dqdot/dp                           n*m*n
+%  dqddot       dqddot/dp                          n*m*n
 %  F            wrenches                           6*n
 %  Vdot_0       (optional) base acceleration       6*1
 
 %% Outputs
 % [Name]  [Description]                                    [Size]
-%  dtau    derivative of joint torques                      n*m
-%  dV      (optional) derivative of spatial velocities      6*n*m
-%  dVdot   (optional) derivative of spatial accelerations   6*n*m
-%  dF      (optional) derivative of wrenches                6*n*m
+%  dtau    derivative of joint torques                      n*m*n
+%  dV      (optional) derivative of spatial velocities      6*n*m*n
+%  dVdot   (optional) derivative of spatial accelerations   6*n*m*n
+%  dF      (optional) derivative of wrenches                6*n*m*n
 
 %% Examples
 % dtau = solveInverseDynamicsDerivatives(A,M,q,qdot,G,V,Vdot,dq,dqdot,dqddot,F)
@@ -32,10 +32,10 @@ function [dtau, varargout] = solveInverseDynamicsDerivatives(A,M,q,qdot,G,V,Vdot
     %% Initialization
     n      = size(q,1);         % number of joints
     m      = size(dq,2);        % number of parameters
-    dV     = zeros(6,n,m);
-    dVdot  = zeros(6,n,m);
-    dF     = zeros(6,n,m);
-    dtau   = zeros(n,m);
+    dV     = zeros(6,n,m,n);
+    dVdot  = zeros(6,n,m,n);
+    dF     = zeros(6,n,m,n);
+    dtau   = zeros(n,m,n);
     
     V_0     = zeros(6,1);       % base velocity
     Vdot_0  = zeros(6,1);       % base acceleration
@@ -58,35 +58,45 @@ function [dtau, varargout] = solveInverseDynamicsDerivatives(A,M,q,qdot,G,V,Vdot
         Ad_T(:,:,i) = large_Ad(T(:,:,i));
         if i == 1
             for p = 1:m
-                dV(:,i,p)    = Ad_T(:,:,i)*dV_0    - small_ad(A(:,i))*Ad_T(:,:,i)*V_0*dq(i,p)    + A(:,i)*dqdot(i,p);
-                dVdot(:,i,p) = Ad_T(:,:,i)*dVdot_0 - small_ad(A(:,i))*Ad_T(:,:,i)*Vdot_0*dq(i,p) + small_ad(dV(:,i,p))*A(:,i)*qdot(i) ...
-                                + small_ad(V(:,i))*A(:,i)*dqdot(i,p) + A(:,i)*dqddot(i,p);
+                for k = 1:n
+                    dV(:,i,p,k)    = Ad_T(:,:,i)*dV_0    - small_ad(A(:,i))*Ad_T(:,:,i)*V_0*dq(i,p,k)    + A(:,i)*dqdot(i,p,k);
+                    dVdot(:,i,p,k) = Ad_T(:,:,i)*dVdot_0 - small_ad(A(:,i))*Ad_T(:,:,i)*Vdot_0*dq(i,p,k) + small_ad(dV(:,i,p))*A(:,i)*qdot(i) ...
+                                    + small_ad(V(:,i))*A(:,i)*dqdot(i,p,k) + A(:,i)*dqddot(i,p,k);
+                end
             end
         else
             for p = 1:m
-                dV(:,i,p)    = Ad_T(:,:,i)*dV(:,i-1,p)    - small_ad(A(:,i))*Ad_T(:,:,i)*V(:,i-1)*dq(i,p)    + A(:,i)*dqdot(i,p);
-                dVdot(:,i,p) = Ad_T(:,:,i)*dVdot(:,i-1,p) - small_ad(A(:,i))*Ad_T(:,:,i)*Vdot(:,i-1)*dq(i,p) + small_ad(dV(:,i,p))*A(:,i)*qdot(i) ...
-                                + small_ad(V(:,i))*A(:,i)*dqdot(i,p) + A(:,i)*dqddot(i,p);
+                for k = 1:n
+                    dV(:,i,p,k)    = Ad_T(:,:,i)*dV(:,i-1,p,k)    - small_ad(A(:,i))*Ad_T(:,:,i)*V(:,i-1)*dq(i,p,k)    + A(:,i)*dqdot(i,p,k);
+                    dVdot(:,i,p,k) = Ad_T(:,:,i)*dVdot(:,i-1,p,k) - small_ad(A(:,i))*Ad_T(:,:,i)*Vdot(:,i-1)*dq(i,p,k) + small_ad(dV(:,i,p))*A(:,i)*qdot(i) ...
+                                    + small_ad(V(:,i))*A(:,i)*dqdot(i,p,k) + A(:,i)*dqddot(i,p,k);
+                end   
             end
         end
     end
 
-    %% Backward Recursion
-    for i = n:-1:1
-        if i == n
-            for p = 1:m
-                dF(:,i,p) = G(:,:,i)*dVdot(:,i,p) - small_ad(dV(:,i,p))'*G(:,:,i)*V(:,i) - small_ad(V(:,i))'*G(:,:,i)*dV(:,i,p);
-            end
-        else
-            for p = 1:m
-                dF(:,i,p) = Ad_T(:,:,i+1)'* dF(:,i+1,p) - Ad_T(:,:,i+1)'*small_ad(A(:,i+1))'*F(:,i+1)*dq(i+1,p) + G(:,:,i)*dVdot(:,i,p) ...
-                            - small_ad(dV(:,i,p))'*G(:,:,i)*V(:,i) - small_ad(V(:,i))'*G(:,:,i)*dV(:,i,p);
-            end
-        end
-        for p = 1:m
-            dtau(i,p) = A(:,i)'*dF(:,i,p);
-        end
-    end
+%     %% Backward Recursion
+%     for i = n:-1:1
+%         if i == n
+%             for p = 1:m
+%                 for k = 1:n
+%                     dF(:,i,p,k) = G(:,:,i)*dVdot(:,i,p,k) - small_ad(dV(:,i,p,k))'*G(:,:,i)*V(:,i) - small_ad(V(:,i))'*G(:,:,i)*dV(:,i,p,k);                
+%                 end
+%             end
+%         else
+%             for p = 1:m
+%                 for k = 1:n
+%                     dF(:,i,p,k) = Ad_T(:,:,i+1)'* dF(:,i+1,p,k) - Ad_T(:,:,i+1)'*small_ad(A(:,i+1))'*F(:,i+1)*dq(i+1,p,k) + G(:,:,i)*dVdot(:,i,p,k) ...
+%                                 - small_ad(dV(:,i,p,k))'*G(:,:,i)*V(:,i) - small_ad(V(:,i))'*G(:,:,i)*dV(:,i,p,k);                
+%                 end
+%             end
+%         end
+%         for p = 1:m
+%             for k = 1:n
+%                 dtau(i,p,k) = A(:,i)'*dF(:,i,p,k);
+%             end
+%         end
+%     end
 
     if nargout > 1
         varargout{1} = dV;
