@@ -67,6 +67,7 @@ function robot = makeWam7()
     
     % temporary..
     robot.B_metric_inv_Phi_Bt = robot.B * pinv(robot.pd_metric_Phi) * robot.B';
+    robot.B_metric_inv_Phi_Bt = (robot.B_metric_inv_Phi_Bt+robot.B_metric_inv_Phi_Bt')/2;
 
     
 %     robot.nominal_Phi = zeros(10*robot.dof,1);

@@ -71,14 +71,14 @@ function [tau, varargout] = solveInverseDynamics(A,M,q,qdot,qddot,G,varargin)
     end
 
     %% Backward Recursion
-%     for i = n:-1:1
-%         if i == n
-%             F(:,i) = large_Ad(T_end)'*F_tip + G(:,:,i)*Vdot(:,i) - small_ad(V(:,i))'*G(:,:,i)*V(:,i);
-%         else
-%             F(:,i) = Ad_T(:,:,i+1)'*F(:,i+1) + G(:,:,i)*Vdot(:,i) - small_ad(V(:,i))'*G(:,:,i)*V(:,i);
-%         end
-%         tau(i) = A(:,i)'*F(:,i);
-%     end
+    for i = n:-1:1
+        if i == n
+            F(:,i) = large_Ad(T_end)'*F_tip + G(:,:,i)*Vdot(:,i) - small_ad(V(:,i))'*G(:,:,i)*V(:,i);
+        else
+            F(:,i) = Ad_T(:,:,i+1)'*F(:,i+1) + G(:,:,i)*Vdot(:,i) - small_ad(V(:,i))'*G(:,:,i)*V(:,i);
+        end
+        tau(i) = A(:,i)'*F(:,i);
+    end
     
     if nargout > 1
         varargout{1} = V;

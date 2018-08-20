@@ -5,7 +5,7 @@
 % [Name]      [Description]                                                [Size]
 %  p           trajectory parameter to optimize                             m*n
 %  robot       robot object (A, B, M)                                       struct
-%  trajectory  object w/ trajectory parameters(order, horizon, num_sample)  struct
+%  trajectory  object w/ trajectory parameters                              struct
 %  sigma_inv   inverse of torque covariance matrix                          n*n
 
 %% Outputs
@@ -15,10 +15,24 @@
 
 %% Implementation
 function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv)
+    B_metric_inv_Phi_Bt_half = (robot.B_metric_inv_Phi_Bt)^(0.5);
+    B_metric_inv_Phi_Bt_half = (B_metric_inv_Phi_Bt_half+B_metric_inv_Phi_Bt_half')/2;
+    B_metric_inv_Phi_Bt_half_inv = pinv(B_metric_inv_Phi_Bt_half);
+    B_metric_inv_Phi_Bt_half_inv = (B_metric_inv_Phi_Bt_half_inv+B_metric_inv_Phi_Bt_half_inv')/2;
     if nargout == 1
         C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv);
+        C = B_metric_inv_Phi_Bt_half*C*B_metric_inv_Phi_Bt_half_inv;
+        C = (C+C')/2;
     else
         [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigma_inv);
+        C = B_metric_inv_Phi_Bt_half*C*B_metric_inv_Phi_Bt_half_inv;
+        C = (C+C')/2;
+        for i = 1 : size(gradC,3)
+            for j =1 : size(gradC,4)
+                gradC(:,:,i,j) = B_metric_inv_Phi_Bt_half * gradC(:,:,i,j) * B_metric_inv_Phi_Bt_half_inv;
+                gradC(:,:,i,j) = (gradC(:,:,i,j) + gradC(:,:,i,j)')/2;
+            end
+        end
     end
     
     % eigen decomposition
@@ -35,7 +49,6 @@ function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv)
 
     % condition number cond(C)
     f = max_eig/min_eig;
-
     if nargout > 1
         m = size(p,1);
         n = size(p,2);

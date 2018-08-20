@@ -5,7 +5,7 @@
 % [Name]      [Description]                                                [Size]
 %  p           trajectory parameter to optimize                             m*n
 %  robot       robot object (A, B, M)                                       struct
-%  trajectory  object w/ trajectory parameters(order, horizon, num_sample)  struct
+%  trajectory  object w/ trajectory parameters                              struct
 %  sigma_inv   inverse of torque covariance matrix                          n*n
 
 %% Outputs
@@ -31,12 +31,19 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
     A = robot.A;
     M = robot.M;
         
-    % trajectory parameters
+    % Spline trajectory parameters
+%     num_sample       = trajectory.num_sample;
+%     horizon          = trajectory.horizon;
+%     trajectory_order = trajectory.order;
+%     sample_time      = linspace(0,horizon,num_sample);
+%     sample_interval  = horizon/num_sample;              % dt for numerical integration
+
+    % Fourier trajectory parameters
     num_sample       = trajectory.num_sample;
     horizon          = trajectory.horizon;
-    trajectory_order = trajectory.order;
+    base_frequency   = trajectory.base_frequency;
     sample_time      = linspace(0,horizon,num_sample);
-    sample_interval  = horizon/num_sample;              % dt for numerical integration
+    sample_interval  = horizon/num_sample;                % dt for numerical integration
 
     % size initialization
     dY_B = zeros(n,num_base,m,n,num_sample);
@@ -45,9 +52,13 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
     
     %% Integration
     
-    % trajectory generation with parameter p
-    [q, qdot, qddot]    = makeSpline(p, trajectory_order, horizon, sample_time);
-    [dq, dqdot, dqddot] = getSplineDerivative(p, trajectory_order, horizon, sample_time);
+    % Spline trajectory generation with parameter p
+%     [q, qdot, qddot]    = makeSpline(p, trajectory_order, horizon, sample_time);
+%     [dq, dqdot, dqddot] = getSplineDerivative(p, trajectory_order, horizon, sample_time);
+
+    % Spline trajectory generation with parameter p
+    [q, qdot, qddot]    = makeFourier(p, base_frequency, sample_time);
+     [dq, dqdot, dqddot] = getFourierDerivative(p, base_frequency, sample_time);
 
     parfor t=1:num_sample
         % get V, Vdot, dV, dVdot from forward recursion, use dummy G and F      
