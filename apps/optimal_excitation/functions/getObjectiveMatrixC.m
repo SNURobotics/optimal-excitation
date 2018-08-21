@@ -65,5 +65,5 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
         sum_A(:,:,t) = Y_B'*sigma_inv*Y_B;
     end
     
-    C = sum(sum_A,3) * B_metric_inv_Bt * sample_interval;
+    C = sum(sum_A,3) * B_metric_inv_Bt;
 end

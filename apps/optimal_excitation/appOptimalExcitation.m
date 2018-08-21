@@ -4,8 +4,8 @@ clear
 clc
 
 %% Initialization
-robot     = makeWam7();         % robot model
-m         = 6;                  % num of trajectory coefs per joints
+robot     = makeKukaR820();          % robot model
+m         = 10;                        % num of trajectory coefs per joints
 p_initial = 2*rand(m,robot.dof) - 1;  % initial p
 
 % for i = 1:robot.dof
@@ -14,11 +14,11 @@ p_initial = 2*rand(m,robot.dof) - 1;  % initial p
 % end
 
 trajectory.order           = 4;      % B Spline cubic base function
-trajectory.horizon         = 8;      % trajectory horizon
-trajectory.num_sample      = 100;    % number of samples of the trajectory
-trajectory.base_frequency  = pi/4;   % Fourier trajectory base frequency
+trajectory.horizon         = 20;      % trajectory horizon
+trajectory.num_sample      = 10;    % number of samples of the trajectory
+trajectory.base_frequency  = pi*0.1;   % Fourier trajectory base frequency
 
-sigma = eye(robot.dof)*1e-5;         % torque covariance
+sigma = eye(robot.dof); %*1e-5;         % torque covariance
 sigma_inv = pinv(sigma);
 
 %% Trajectory Optimization
@@ -79,3 +79,6 @@ end
 % Phi_B_w_metric = solveLeastSqaurePhiB(robot, p_optimal, trajectory, sigma);
 % 
 % X = [Phi_B Phi_B_random_traj  Phi_B_wo_metric Phi_B_w_metric];
+
+%%
+appTestSTL

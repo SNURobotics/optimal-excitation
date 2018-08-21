@@ -43,6 +43,7 @@ function [f, varargout] = getTraceCov(p, robot, trajectory, sigma_inv)
     f = tr_C_inv;
     
     eig_C = eig(C_inv);
+    
     if nargout > 1
         m = size(p,1);
         n = size(p,2);

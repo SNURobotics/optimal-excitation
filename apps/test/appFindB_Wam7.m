@@ -3,18 +3,12 @@ clear
 clc
 
 %%
-robot = wam7robot
-n = robot.nDOF;
+robot = makeWam7;
+n = robot.dof;
 
-A = zeros(6,n);
-for i=1:n
-    A(:,i) = robot.link(i).screw;
-end
+A = robot.A;
 
-M = zeros(4,4,n);
-for i=1:n
-    M(:,:,i) = inverse_SE3(robot.link(i).M);
-end
+M = robot.M;
 
 G = zeros(6,6,n);   % dummy value
 
@@ -37,9 +31,9 @@ for iter = 1:num_trajectory
         [tau, V, Vdot] = solveInverseDynamics(A,M,q(:,t),qdot(:,t),qddot(:,t),G);
         [Y, W] = getRegressorRecursive(A,M,q(:,t),V,Vdot);
         
-        cummulativeY(n*((i-1)*num_sample + (t-1))+1:n*((i-1)*num_sample + t),:) = Y;
+        cummulativeY(n*((iter-1)*num_sample + (t-1))+1:n*((iter-1)*num_sample + t),:) = Y;
     end
 end
 
 [U,S,V] = svd(cummulativeY);
-B = V(:,1:39)'
+% B = V(:,1:39)'

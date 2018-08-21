@@ -79,12 +79,11 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
         end
     end
     
-    C = sum(sum_A,3) * B_metric_inv_Bt * sample_interval;
+    C = sum(sum_A,3) * B_metric_inv_Bt;
     gradC = zeros(num_base,num_base,m,n); 
     for k = 1:m
         for l = 1:n
             gradC(:,:,k,l) = sum(sum_dA(:,:,k,l,:), 5) * B_metric_inv_Bt;
         end
     end
-    gradC = gradC * sample_interval;
 end
