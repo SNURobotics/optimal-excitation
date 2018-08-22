@@ -11,11 +11,11 @@
 %  frame       frame handler for additional update           struct
 
 %% Examples
-% end_effector = draw_SE3(end_effector_T);
-% draw_SE3(end_effector_T, end_effector);
+% end_effector = plot_SE3(end_effector_T);
+% plot_SE3(end_effector_T, end_effector);
 
 %% Implementation
-function frame = draw_SE3(T, varargin)
+function frame = plot_SE3(T, varargin)
     if(size(T) ~= [4,4])
         error('se3 size error');
     end

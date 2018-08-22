@@ -9,11 +9,11 @@ axis([-1 1 -1 1 -1 1]);
 xlabel('x'); ylabel('y'); zlabel('z');
 view(-45, 30);
 
-base = draw_SE3(eye(4));
+base = plot_SE3(eye(4));
 
 q = zeros(7,1);
 end_effector_T = solveForwardKinematics(q, robot.A, robot.M);
-end_effector = draw_SE3(end_effector_T);
+end_effector = plot_SE3(end_effector_T);
 
 getframe;
 
@@ -23,7 +23,7 @@ while(1)
     q(joint) = q(joint) + 0.1;
     end_effector_T = solveForwardKinematics(q, robot.A, robot.M);
 
-    draw_SE3(end_effector_T, end_effector);
+    plot_SE3(end_effector_T, end_effector);
     getframe;
     pause(0.01);
 end

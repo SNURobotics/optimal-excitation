@@ -1,11 +1,11 @@
-%% Trajectory Optimization for Parameter Identification
+%% Trajectory Optimization for Dynamic Parameter Identification
 close all
 clear
 clc
 
 %% Initialization
-robot     = makeKukaR820();          % robot model
-m         = 10;                        % num of trajectory coefs per joints
+robot     = makeKukaR820();           % robot model
+m         = 10;                       % num of trajectory coefs per joints
 p_initial = 2*rand(m,robot.dof) - 1;  % initial p
 
 % for i = 1:robot.dof
@@ -13,12 +13,12 @@ p_initial = 2*rand(m,robot.dof) - 1;  % initial p
 % %     p_initial(:,i) = 10/robot.Phi(10*(i-1)+1);
 % end
 
-trajectory.order           = 4;      % B Spline cubic base function
+trajectory.order           = 4;       % B Spline cubic base function
 trajectory.horizon         = 20;      % trajectory horizon
-trajectory.num_sample      = 10;    % number of samples of the trajectory
-trajectory.base_frequency  = pi*0.1;   % Fourier trajectory base frequency
+trajectory.num_sample      = 10;      % number of samples of the trajectory
+trajectory.base_frequency  = pi*0.1;  % Fourier trajectory base frequency
 
-sigma = eye(robot.dof); %*1e-5;         % torque covariance
+sigma     = eye(robot.dof);           % torque covariance
 sigma_inv = pinv(sigma);
 
 %% Trajectory Optimization
@@ -30,40 +30,12 @@ options = optimoptions(@fmincon,'Algorithm', 'interior-point', 'SpecifyObjective
 % options = optimoptions('fmincon','Display','iter','Algorithm','sqp');
 
 tic
-[p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getTraceCov(p,robot,trajectory,sigma_inv), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory), options);
+[p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getTraceCov(p,robot,trajectory,sigma_inv), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
 toc
 
 % tic
 % [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getTraceCov(p,robot,trajectory,sigma_inv), p_initial, [], [], [], [], [], [], [], options);
 % toc
-
-
-% p_optimal = p_initial;
-% for i = 1 : 39
-%     reduced_size = i;
-% tic
-% [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getCondNumber(p,robot,trajectory,sigma_inv), p_optimal, [], [], [], [], [], [], [], options);
-% toc
-% end
-% tic
-% [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getrelaxedCondNumber(p,robot,trajectory,sigma_inv), p_initial, [], [], [], [], [], [], [], options);
-% toc
-% w/o metric
-% tic
-% [p_baseline,fval_baseline,exitflag_baseline,output_baseline,lam_costate_baseline] = fmincon(@(p)getCondNumberNoMetric(p,robot,trajectory,sigma_inv), p_initial, [], [], [], [], [], [], [], options);
-% toc
-% 
-
-%% Trajectory Plot
-sample_time = linspace(0,trajectory.horizon,trajectory.num_sample);
-q_init = makeFourier(p_initial, trajectory.base_frequency, sample_time);
-q_opti = makeFourier(p_optimal, trajectory.base_frequency, sample_time);
-figure(); hold on;
-for i = 1:robot.dof
-    subplot(1,robot.dof,i);
-    plot(q_init(i,:),'b'); hold on;
-    plot(q_opti(i,:),'r');    
-end
 
 %% Least-Square Parameter Identification
 % % True Phi_B
@@ -80,5 +52,20 @@ end
 % 
 % X = [Phi_B Phi_B_random_traj  Phi_B_wo_metric Phi_B_w_metric];
 
-%%
-appTestSTL
+%% Trajectory Plot
+time_step = 0.1;
+num_time = floor(trajectory.horizon / time_step);
+sample_time = linspace(0,trajectory.horizon,num_time);
+
+q_initial = makeFourier(p_initial, trajectory.base_frequency, sample_time);
+q_optimal = makeFourier(p_optimal, trajectory.base_frequency, sample_time);
+
+figure(); hold on;
+for i = 1:robot.dof
+    subplot(1,robot.dof,i);
+    plot(q_initial(i,:),'b'); hold on;
+    plot(q_optimal(i,:),'r');    
+end
+
+% robot visualization
+appVisualizeKUKA(q_optimal)

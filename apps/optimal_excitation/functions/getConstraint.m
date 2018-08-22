@@ -6,16 +6,14 @@
 %% Outputs
 
 %% Implementation
-function [c, ceq] = getConstraint(p, trajectory)
+function [c, ceq] = getConstraint(p, trajectory, robot)
     ceq = [];
     
     % joint constraints
-    q_max = ones(7,1)*pi';
-    q_min = -q_max;
-    qdot_max = ones(7,1)*pi';
-    qdot_min = -qdot_max;
-    qddot_max =  ones(7,1)*pi';
-    qddot_min  = -qddot_max;
+    q_max = robot.q_max;
+    q_min = robot.q_min;
+    qdot_max = robot.qdot_max;
+    qdot_min = robot.qdot_min;
     
     % Fourier trajectory parameters
     num_sample       = trajectory.num_sample;
@@ -23,6 +21,6 @@ function [c, ceq] = getConstraint(p, trajectory)
     base_frequency   = trajectory.base_frequency;
     sample_time      = linspace(0,horizon,num_sample);
 
-    [q, qdot, qddot] = makeFourier(p, base_frequency, sample_time);
-    c = [q-q_max, q_min-q, qdot-qdot_max, qdot_min-qdot, qddot-qddot_max, qddot_min-qddot];
+    [q, qdot] = makeFourier(p, base_frequency, sample_time);
+    c = [q-q_max, q_min-q, qdot-qdot_max, qdot_min-qdot];
 end
