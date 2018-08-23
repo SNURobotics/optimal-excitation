@@ -6,7 +6,7 @@
 %% Outputs
 
 %% Implementation
-function [c, ceq] = getConstraint(p, trajectory, robot)
+function [c, ceq, gradc, gradceq] = getConstraint(p, trajectory, robot)
     ceq = [];
     
     % joint constraints
@@ -23,4 +23,20 @@ function [c, ceq] = getConstraint(p, trajectory, robot)
 
     [q, qdot] = makeFourier(p, base_frequency, sample_time);
     c = [q-q_max, q_min-q, qdot-qdot_max, qdot_min-qdot];
+    
+    if nargout > 2
+        gradceq = [];
+        
+        m = size(p,1);
+        n = robot.dof;
+        
+        [dq, dqdot] = getFourierDerivative(p, base_frequency, sample_time);
+        
+        gradc = zeros(robot.dof, 4*num_sample, m, n);
+        for p = 1:m
+            for l = 1:n
+                gradc(:,:,p,l) = [dq(:,p,l,:) -dq(:,p,l,:) dqdot(:,p,l,:) -dqdot(:,p,l,:)];
+            end
+        end
+    end
 end

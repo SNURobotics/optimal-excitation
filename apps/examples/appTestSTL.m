@@ -32,7 +32,7 @@ end
 figure('Name','KUKA LWR iiwa R820','NumberTitle','off','units','pixels','pos',[100 100 1000 1000]);
 hold on;
 axis equal;
-axis([-1 1 -1 1 -0.5 1]);
+axis([-1 1 -1 1 -0.5 1.2]);
 xlabel('x'); ylabel('y'); zlabel('z');
 
 % draw base link

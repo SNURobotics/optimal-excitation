@@ -3,6 +3,9 @@ close all
 clear
 clc
 
+rmpath(genpath('apps/optimal_excitation/functions_hexarotor/'));
+addpath(genpath('apps/optimal_excitation/functions/'));
+
 %% Initialization
 disp('initializing..')
 
@@ -10,7 +13,7 @@ robot     = makeKukaR820();           % robot model
 
 trajectory.order           = 4;       % B Spline cubic base function
 trajectory.horizon         = 20;      % trajectory horizon
-trajectory.num_sample      = 100;     % number of samples of the trajectory
+trajectory.num_sample      = 10;     % number of samples of the trajectory
 trajectory.base_frequency  = pi*0.1;  % Fourier trajectory base frequency
 
 sigma     = eye(robot.dof) * 1e-2;    % torque covariance
@@ -26,7 +29,7 @@ end
 
 %% Trajectory Optimization
 
-options = optimoptions(@fmincon,'Algorithm', 'sqp', 'SpecifyObjectiveGradient', true, 'SpecifyConstraintGradient', false, 'TolCon',1e-7,'TolX',1e-5,'MaxFunEvals', ...
+options = optimoptions(@fmincon,'Algorithm', 'interior-point', 'SpecifyObjectiveGradient', true, 'SpecifyConstraintGradient', false, 'TolCon',1e-7,'TolX',1e-5,'MaxFunEvals', ...
     1000000,'MaxIter',1000,'Display','iter','Hessian','bfgs'); %'fin-diff-grads'
 % options = optimoptions(@fmincon,'SpecifyObjectiveGradient', true, 'SpecifyConstraintGradient', true, 'Algorithm','sqp','TolCon',1e-15,'TolX',1e-15,'MaxFunEvals',1000000,'MaxIter',10000,'Display','iter');
 % options = optimoptions(@fmincon, 'Algorithm','sqp','TolCon',1e-15,'TolX',1e-15,'MaxFunEvals',1000000,'MaxIter',10000,'Display','iter');
@@ -34,7 +37,8 @@ options = optimoptions(@fmincon,'Algorithm', 'sqp', 'SpecifyObjectiveGradient', 
 
 % w/ metric
 disp('optimizing w/ metric..')
-[p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getTraceCov(p,robot,trajectory,sigma_inv), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
+% [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getCondNumber(p,robot,trajectory,sigma_inv), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
+[p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getCondNumber(p,robot,trajectory,sigma_inv), p_initial, [], [], [], [], [], [], [], options);
 
 % w/o metric
 robot.pd_metric_Phi = eye(robot.dof*10);

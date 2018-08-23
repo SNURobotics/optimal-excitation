@@ -7,7 +7,7 @@
 %  T_sb_i      body frames SE(3) from base frame      4*4*n
 %  G_b_i       body inertia matrix G                  6*6*n        
 %  trans       (optional) transparency                1*1
-%  color       (optional) inertia color RGBs          3*n
+%  color       (optional) inertia color RGBs          n*3
 
 %% Implementation
 function plot_InertiaTensor(T_sb_i, G_b_i, varargin)
@@ -15,7 +15,7 @@ function plot_InertiaTensor(T_sb_i, G_b_i, varargin)
     
     if nargin == 2
         trans = 0.5;
-        color = rand(3, n_parts);
+        color = rand(n_parts,3);
     elseif nargin == 4
         trans = varargin{1};
         color = varargin{2};
