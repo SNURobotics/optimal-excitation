@@ -8,7 +8,7 @@ q = zeros(robot.dof,1);
 T = solveForwardKinematics(q, robot.A, robot.M);
 
 %% Figure Setting
-figure('Name','KUKA LWR iiwa R820','NumberTitle','off','units','pixels','pos',[100 100 1000 1000]);
+figure('Name','Phantom','NumberTitle','off','units','pixels','pos',[100 100 1000 1000]);
 hold on;
 axis equal;
 axis([-2 2 -2 2 -2 2]);

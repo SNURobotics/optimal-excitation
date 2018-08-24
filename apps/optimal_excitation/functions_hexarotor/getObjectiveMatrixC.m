@@ -32,13 +32,16 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
     M = robot.M;
 
     S_inv = robot.S_inv;
+
+    % parameterize q, qdot, qddot itself
+    num_sample = 1;
     
     % Spline trajectory parameters
-    num_sample       = trajectory.num_sample;
-    horizon          = trajectory.horizon;
-    trajectory_order = trajectory.order;
-    sample_time      = linspace(0,horizon,num_sample);
-    sample_interval  = horizon/num_sample;              % dt for numerical integration
+%     num_sample       = trajectory.num_sample;
+%     horizon          = trajectory.horizon;
+%     trajectory_order = trajectory.order;
+%     sample_time      = linspace(0,horizon,num_sample);
+%     sample_interval  = horizon/num_sample;              % dt for numerical integration
 
     % Fourier trajectory parameters
 %     num_sample       = trajectory.num_sample;
@@ -53,12 +56,25 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
     %% Integration
     
     % Spline trajectory generation with parameter p
-    [q, qdot, qddot]    = makeSpline(p, trajectory_order, horizon, sample_time);
+%     [q, qdot, qddot]    = makeSpline(p, trajectory_order, horizon, sample_time);
 
-    % Spline trajectory generation with parameter p
+    % Fourier trajectory generation with parameter p
 %     [q, qdot, qddot]    = makeFourier(p, base_frequency, sample_time);
-
-    parfor t=1:num_sample
+    
+    % parameterize q, qdot, qddot itself
+    q = p(1,:)';
+    qdot = p(2,:)';
+    qddot = p(3,:)';  
+    dq = zeros(n,m,n);
+    dqdot= zeros(n,m,n);
+    dqddot = zeros(n,m,n);
+    for i = 1:n
+        dq(i,1,i) = 1;
+        dqdot(i,2,i) = 1;
+        dqddot(i,3,i) = 1;
+    end
+    
+    for t=1:num_sample
         % get V, Vdot, dV, dVdot from forward recursion, use dummy G and F      
         [tau, V, Vdot, F] = solveInverseDynamics(A,M,q(:,t),qdot(:,t),qddot(:,t),G,Vdot_0);
 

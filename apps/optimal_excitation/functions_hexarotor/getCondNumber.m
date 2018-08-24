@@ -7,6 +7,7 @@
 %  robot       robot object (A, B, M)                                       struct
 %  trajectory  object w/ trajectory parameters                              struct
 %  sigma_inv   inverse of torque covariance matrix                          n*n
+%  C_previous  (optional) offset
 
 %% Outputs
 % [Name]  [Description]                               [Size]
@@ -14,8 +15,12 @@
 %  grad    derivative of condition number of C(p)      m*n
 
 %% Implementation
-function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv)
-global C_previous
+function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv, varargin)
+
+    if nargin > 4
+        C_previous = varargin{1};
+    end
+    
     B_metric_inv_Phi_Bt_half = (robot.B_metric_inv_Phi_Bt)^(0.5);
     B_metric_inv_Phi_Bt_half = (B_metric_inv_Phi_Bt_half+B_metric_inv_Phi_Bt_half')/2;
     B_metric_inv_Phi_Bt_half_inv = pinv(B_metric_inv_Phi_Bt_half);
