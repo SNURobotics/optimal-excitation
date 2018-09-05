@@ -4,6 +4,7 @@ clear
 clc
 
 rmpath(genpath('apps/optimal_excitation/functions/'));
+rmpath(genpath('apps/optimal_excitation/functions_Atlas/'));
 addpath(genpath('apps/optimal_excitation/functions_hexarotor/'));
 
 %% Initialization
