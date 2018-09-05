@@ -148,11 +148,14 @@ function robot = makeAtlasV5()
     robot_tree{1}.A = zeros(6,1);
     robot_tree{1}.M = eye(4);
     
+    % robot object
     robot.dof = size(robot_tree,1) - 1;
     robot.A = zeros(6,robot.dof);
     robot.M = zeros(4,4,robot.dof);
     robot.G = zeros(6,6,robot.dof);
-        
+    robot.q_min = zeros(robot.dof,1);
+    robot.q_max = zeros(robot.dof,1);
+    
     for i = 1:robot.dof
         robot.A(:,i) = robot_tree{i+1}.A;
         robot.M(:,:,i) = robot_tree{i+1}.M;
@@ -160,5 +163,9 @@ function robot = makeAtlasV5()
         robot.name{i} = robot_tree{i+1}.name;
         robot.tree{i}.parent = robot_tree{i+1}.parent - 1;
         robot.tree{i}.children = robot_tree{i+1}.children - 1;
-    end        
+        
+        robot.q_min(i) = robot_tree{i+1}.joint_range(1);
+        robot.q_max(i) = robot_tree{i+1}.joint_range(2);
+        
+    end
 end
