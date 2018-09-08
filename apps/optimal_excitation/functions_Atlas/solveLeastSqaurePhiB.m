@@ -16,7 +16,7 @@ function Phi_B = solveLeastSqaurePhiB(robot,p,trajectory, sigma)
 
     % trajectory generation with parameter p
 %    [q, qdot, qddot] = makeSpline(p, trajectory.order, trajectory.horizon, sample_time);
-   [q, qdot, qddot] = makeFourier(p, trajectory.base_frequency, sample_time);
+   [q, qdot, qddot] = makeFourier(p, trajectory.base_frequency, sample_time, (robot.q_max + robot.q_min)/2);
 
     for t=1:trajectory.num_sample
         [tau, V, Vdot] = solveInverseDynamics(robot.A,robot.M,q(:,t),qdot(:,t),qddot(:,t),robot.G);

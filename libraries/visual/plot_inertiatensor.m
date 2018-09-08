@@ -14,7 +14,7 @@ function plot_InertiaTensor(T_sb_i, G_b_i, varargin)
     n_parts = size(G_b_i,3);
     
     if nargin == 2
-        trans = 0.5;
+        trans = 0.2;
         color = rand(n_parts,3);
     elseif nargin == 4
         trans = varargin{1};

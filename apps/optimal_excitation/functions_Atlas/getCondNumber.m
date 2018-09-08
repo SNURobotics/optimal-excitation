@@ -15,24 +15,24 @@
 
 %% Implementation
 function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv)
-    B_metric_inv_Phi_Bt_half = (robot.B_metric_inv_Phi_Bt)^(0.5);
-    B_metric_inv_Phi_Bt_half = (B_metric_inv_Phi_Bt_half+B_metric_inv_Phi_Bt_half')/2;
-    B_metric_inv_Phi_Bt_half_inv = pinv(B_metric_inv_Phi_Bt_half);
-    B_metric_inv_Phi_Bt_half_inv = (B_metric_inv_Phi_Bt_half_inv+B_metric_inv_Phi_Bt_half_inv')/2;
+%     B_metric_inv_Phi_Bt_half = sqrtm(robot.B_metric_inv_Phi_Bt);
+%     B_metric_inv_Phi_Bt_half = (B_metric_inv_Phi_Bt_half+B_metric_inv_Phi_Bt_half')/2;
+%     B_metric_inv_Phi_Bt_half_inv = inv(B_metric_inv_Phi_Bt_half);
+%     B_metric_inv_Phi_Bt_half_inv = (B_metric_inv_Phi_Bt_half_inv+B_metric_inv_Phi_Bt_half_inv')/2;
     if nargout == 1
         C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv);
-        C = B_metric_inv_Phi_Bt_half*C*B_metric_inv_Phi_Bt_half_inv;
-        C = (C+C')/2;
+%         C = B_metric_inv_Phi_Bt_half*C*B_metric_inv_Phi_Bt_half_inv;
+%         C = (C+C')/2;
     else
         [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigma_inv);
-        C = B_metric_inv_Phi_Bt_half*C*B_metric_inv_Phi_Bt_half_inv;
-        C = (C+C')/2;
-        for i = 1 : size(gradC,3)
-            for j =1 : size(gradC,4)
-                gradC(:,:,i,j) = B_metric_inv_Phi_Bt_half * gradC(:,:,i,j) * B_metric_inv_Phi_Bt_half_inv;
-                gradC(:,:,i,j) = (gradC(:,:,i,j) + gradC(:,:,i,j)')/2;
-            end
-        end
+%         C = B_metric_inv_Phi_Bt_half*C*B_metric_inv_Phi_Bt_half_inv;
+%         C = (C+C')/2;
+%         for i = 1 : size(gradC,3)
+%             for j =1 : size(gradC,4)
+%                 gradC(:,:,i,j) = B_metric_inv_Phi_Bt_half * gradC(:,:,i,j) * B_metric_inv_Phi_Bt_half_inv;
+%                 gradC(:,:,i,j) = (gradC(:,:,i,j) + gradC(:,:,i,j)')/2;
+%             end
+%         end
     end
     
     % eigen decomposition
@@ -40,7 +40,8 @@ function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv)
     k = size(D,1);
     eigs = zeros(k,1);
     for i=1:k
-        eigs(i) = abs(D(i,i));    
+%         eigs(i) = abs(D(i,i));
+        eigs(i) = D(i,i);
     end
     min_eig = min(eigs);
     max_eig = max(eigs);

@@ -21,7 +21,7 @@ function [c, ceq, gradc, gradceq] = getConstraint(p, trajectory, robot)
     base_frequency   = trajectory.base_frequency;
     sample_time      = linspace(0,horizon,num_sample);
 
-    [q, qdot] = makeFourier(p, base_frequency, sample_time);
+    [q, qdot] = makeFourier(p, base_frequency, sample_time, (robot.q_max + robot.q_min)/2);
     c = [q-q_max, q_min-q, qdot-qdot_max, qdot_min-qdot];
     
     if nargout > 2

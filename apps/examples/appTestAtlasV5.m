@@ -6,9 +6,8 @@ robot = makeAtlasV5();
 
 dof = robot.dof;
 T = zeros(4,4,dof);
-T(:,:,1) = eye(4);
+T(:,:,robot.root) = eye(4);
 q = zeros(dof,1);
-
 
 for i = 1:dof
     if strcmp(robot.name{i}, 'r_lfarm')
@@ -41,34 +40,27 @@ end
 figure('Name','Atlas v5','NumberTitle','off','units','pixels','pos',[-1000 200 900 900]);
 hold on;
 axis equal;
-axis([-2 2 -2 2 -1 3]);
+axis([-1.5 1.5 -1.5 1.5 -0.5 2.5]);
 xlabel('x'); ylabel('y'); zlabel('z');
-view(135, 30);
+view(110, 30);
          
 % Add a camera light, and tone down the specular highlighting
 camlight('headlight');
 material('dull');
 
 stack = CStack();
-stack.push(1);
-
+stack.push(robot.root);
 while(~stack.isempty)
     link = stack.pop;
-    
+
     for i = 1:size(robot.tree{link}.children,1)
         stack.push(robot.tree{link}.children(i));
     end
 
-    try
-        T(:,:,link) = T(:,:,robot.tree{link}.parent)*inverse_SE3(robot.M(:,:,link))*exp_se3(robot.A(:,link) * q(link));
-    catch 
-        if robot.tree{link}.parent == 0
-            T(:,:,link) = inverse_SE3(robot.M(:,:,link))*exp_se3(robot.A(:,link) * q(link));
-        end
-    end
+    T(:,:,link) = T(:,:,robot.tree{link}.parent)*inverse_SE3(robot.M(:,:,link))*exp_se3(robot.A(:,link) * q(link));
     
     plot_SE3(T(:,:,link));
-    
+    robot.stl_zero{link} = robot.stl{link};
     robot.stl{link}.vertices = (T(1:3,1:3,link)*robot.stl{link}.vertices' ...
                                 + T(1:3,4,link)*ones(1,size(robot.stl{link}.vertices,1)))';
 
@@ -77,6 +69,7 @@ while(~stack.isempty)
          'FaceLighting',    'gouraud',     ...
          'AmbientStrength', 0.15);
      
-     plot_inertiatensor(T(:,:,link), robot.G(:,:,link));
-    
+%      plot_inertiatensor(T(:,:,link), robot.G(:,:,link)); 
+     
+     text(T(1,4,link),T(2,4,link),T(3,4,link),num2str(link),'HorizontalAlignment','left','FontSize',8);
 end
