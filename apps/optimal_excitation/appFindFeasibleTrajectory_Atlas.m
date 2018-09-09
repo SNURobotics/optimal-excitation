@@ -3,9 +3,15 @@ close all
 clear
 clc
 
+warning_handler = warning('query','last');
 rmpath(genpath('apps/optimal_excitation/functions_hexarotor/'));
 rmpath(genpath('apps/optimal_excitation/functions/'));
 addpath(genpath('apps/optimal_excitation/functions_Atlas/'));
+warning('off',warning_handler.identifier);
+
+%% Options
+load_trajectory      = true;
+visualize_trajectory = false;
 
 %% Initialization
 disp('initializing..')
@@ -34,90 +40,97 @@ q_total = zeros(n,num_trajectory * trajectory.num_sample);
 qdot_total = zeros(n,num_trajectory * trajectory.num_sample);
 qddot_total = zeros(n,num_trajectory * trajectory.num_sample);
 
-for tr = 1:num_trajectory+1
-    while true
-        qi(:,tr) = getInit(robot);
-        com = getCOM(robot, qi(:,tr));
-        if com(1) > robot.zmp_x_min && com(1) < robot.zmp_x_max && com(2) > robot.zmp_y_min && com(2) < robot.zmp_y_max 
-            break
+if ~load_trajectory
+    for tr = 1:num_trajectory+1
+        while true
+            qi(:,tr) = getInit(robot);
+            com = getCOM(robot, qi(:,tr));
+            if com(1) > robot.zmp_x_min && com(1) < robot.zmp_x_max && com(2) > robot.zmp_y_min && com(2) < robot.zmp_y_max 
+                break
+            end
         end
     end
 end
 
 %% Find Feasible Trajectories for the Points
-for tr = 1:num_trajectory
+if ~load_trajectory
+    for tr = 1:num_trajectory
 
-    tries = 0;
-    while true
-        tries = tries + 1;
-        
-        % if hard to find a feasible trajectory, reset the end point
-        if tries > max_tries
-            while true
-                qi(:,tr+1) = getInit(robot);
-                com = getCOM(robot, qi(:,tr+1));
-                if com(1) > robot.zmp_x_min && com(1) < robot.zmp_x_max && com(2) > robot.zmp_y_min && com(2) < robot.zmp_y_max 
-                    break
+        tries = 0;
+        while true
+            tries = tries + 1;
+
+            % if hard to find a feasible trajectory, reset the end point
+            if tries > max_tries
+                while true
+                    qi(:,tr+1) = getInit(robot);
+                    com = getCOM(robot, qi(:,tr+1));
+                    if com(1) > robot.zmp_x_min && com(1) < robot.zmp_x_max && com(2) > robot.zmp_y_min && com(2) < robot.zmp_y_max 
+                        break
+                    end
+                end
+                tries = 1;
+            end
+
+            disp([num2str(tr) 'th trajectory ' num2str(tries) 'th try']);
+
+             p_initial = zeros(m,robot.dof);
+             for i = 1:m
+                 p_initial(i,:) = getInit(robot)';
+             end
+            [q, qdot, qddot] = makeSplineP2P(qi(:,tr),qi(:,tr+1),p_initial, trajectory.order, trajectory.horizon, sample_time);
+
+            flag = true;
+            for t = 1:trajectory.num_sample
+                if size(find(qdot(:,t) - robot.qdot_min > 0),1) ~= n || size(find(qdot(:,t) - robot.qdot_max < 0),1) ~= n
+                    flag = false;
+                    break;
+                end    
+                zmp = getZMP(robot, q(:,t), qdot(:,t), qddot(:,t));
+                if zmp(1) < robot.zmp_x_min || zmp(1) > robot.zmp_x_max || zmp(2) < robot.zmp_y_min || zmp(2) > robot.zmp_y_max
+                    flag = false;
+                    break;
                 end
             end
-            tries = 1;
-        end
-        
-        disp([num2str(tr) 'th trajectory ' num2str(tries) 'th try']);
 
-         p_initial = zeros(m,robot.dof);
-         for i = 1:m
-             p_initial(i,:) = getInit(robot)';
-         end
-        [q, qdot, qddot] = makeSplineP2P(qi(:,tr),qi(:,tr+1),p_initial, trajectory.order, trajectory.horizon, sample_time);
+            if flag == true
+                % plot CoM trajectory
+        %         figure(); hold on;
+        %         for t = 1:trajectory.num_sample
+        %             zmp = getZMP(robot, q(:,t), qdot(:,t), qddot(:,t));
+        %             plot(zmp(1), zmp(2), '.'); hold on;
+        %         end
 
-        flag = true;
-        for t = 1:trajectory.num_sample
-            if size(find(qdot(:,t) - robot.qdot_min > 0),1) ~= n || size(find(qdot(:,t) - robot.qdot_max < 0),1) ~= n
-                flag = false;
-                break;
-            end    
-            zmp = getZMP(robot, q(:,t), qdot(:,t), qddot(:,t));
-            if zmp(1) < robot.zmp_x_min || zmp(1) > robot.zmp_x_max || zmp(2) < robot.zmp_y_min || zmp(2) > robot.zmp_y_max
-                flag = false;
+                q_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = q;
+                qdot_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = qdot;
+                qddot_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = qddot;
+                p{tr} = p_initial;
                 break;
             end
-        end
-
-        if flag == true
-            % plot CoM trajectory
-    %         figure(); hold on;
-    %         for t = 1:trajectory.num_sample
-    %             zmp = getZMP(robot, q(:,t), qdot(:,t), qddot(:,t));
-    %             plot(zmp(1), zmp(2), '.'); hold on;
-    %         end
-    
-            q_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = q;
-            qdot_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = qdot;
-            qddot_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = qddot;
-            p{tr} = p_initial;
-            break;
         end
     end
 end
 
 %% Trajectory Generation from qi & p
-load('..\data\qi_atlas_3sec_50samples_100trajectories.mat');
-load('..\data\p_atlas_3sec_50samples_100trajectories.mat');
+if load_trajectory
+    load('..\data\qi_atlas_3sec_50samples_100trajectories.mat');
+    load('..\data\p_atlas_3sec_50samples_100trajectories.mat');
 
-for tr = 1:num_trajectory
+    for tr = 1:num_trajectory
 
-    [q, qdot, qddot] = makeSplineP2P(qi(:,tr),qi(:,tr+1),p{tr}, trajectory.order, trajectory.horizon, sample_time);
+        [q, qdot, qddot] = makeSplineP2P(qi(:,tr),qi(:,tr+1),p{tr}, trajectory.order, trajectory.horizon, sample_time);
 
-    q_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = q;
-    qdot_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = qdot;
-    qddot_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = qddot;
+        q_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = q;
+        qdot_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = qdot;
+        qddot_total(:,1+trajectory.num_sample*(tr-1):trajectory.num_sample*tr) = qddot;
 
+    end
 end
 
 %% Visualization
-appVisualizeAtlas(q_total)
-
+if visualize_trajectory
+    appVisualizeAtlas(q_total);
+end
 
 %% Parameter Identification
 disp('Running Parameter Identification..')
@@ -171,6 +184,7 @@ b = zeros(6*trajectory.num_sample*num_trajectory,1);
 % stack for tree traversing
 stack = CStack();
 
+disp('computing covariance matrix inverse C..');
 % compute C
 for t=1:trajectory.num_sample * num_trajectory
     % get V, Vdot, dV, dVdot from forward recursion      
@@ -217,8 +231,8 @@ B_metric_invBt_half = (B_metric_invBt_half+B_metric_invBt_half')/2;
 sum_A_sigma_At = (sum_A_sigma_At + sum_A_sigma_At')/2;
 C = B_metric_invBt_half * sum_A_sigma_At * B_metric_invBt_half;
 C = (C+C')/2;
-disp('covariance matrix inverse C has been computed');
 
+disp('computing Phi_B..');
 % eigen decomposition
 [Q, D] = eig(C);
 D = inv(D);
@@ -261,4 +275,5 @@ end
 Phi_B = V_neg*lambda_neg*V_neg'*cum_A'*cum_sigma_inv*b + V_pos*V_pos'*pinv(B_metric_inv_Phi_Bt)*B*Phi_0;
 
 disp('done');
-[pinv(B_metric_invBt_half)*Phi_B pinv(B_metric_invBt_half)*B*robot.Phi];
+
+temp = [Phi_B B*robot.Phi];

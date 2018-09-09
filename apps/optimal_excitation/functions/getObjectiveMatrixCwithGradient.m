@@ -22,8 +22,7 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
     % dynamic parameters
     B = robot.B;
     num_base = size(B,1);
-    mertic_Phi = robot.pd_metric_Phi;    % metric
-    B_metric_inv_Bt = robot.B_metric_inv_Phi_Bt;
+    B_metric_inv_Bt = robot.B_metric_inv_Phi_Bt_0;
     
     G = zeros(6,6,n);   % dummy value
     
@@ -56,9 +55,9 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
 %     [q, qdot, qddot]    = makeSpline(p, trajectory_order, horizon, sample_time);
 %     [dq, dqdot, dqddot] = getSplineDerivative(p, trajectory_order, horizon, sample_time);
 
-    % Spline trajectory generation with parameter p
+    % Fourier trajectory generation with parameter p
     [q, qdot, qddot]    = makeFourier(p, base_frequency, sample_time);
-     [dq, dqdot, dqddot] = getFourierDerivative(p, base_frequency, sample_time);
+    [dq, dqdot, dqddot] = getFourierDerivative(p, base_frequency, sample_time);
 
     parfor t=1:num_sample
         % get V, Vdot, dV, dVdot from forward recursion, use dummy G and F      
@@ -79,11 +78,16 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
         end
     end
     
-    C = sum(sum_A,3) * B_metric_inv_Bt;
+    B_metric_invBt_half = sqrtm(B_metric_inv_Bt);
+    B_metric_invBt_half = (B_metric_invBt_half+B_metric_invBt_half')/2;
+
+    C = B_metric_invBt_half* sum(sum_A,3) * B_metric_invBt_half;
+    C = (C+C')/2;
+    
     gradC = zeros(num_base,num_base,m,n); 
     for k = 1:m
         for l = 1:n
-            gradC(:,:,k,l) = sum(sum_dA(:,:,k,l,:), 5) * B_metric_inv_Bt;
+            gradC(:,:,k,l) = B_metric_invBt_half* sum(sum_dA(:,:,k,l,:), 5) * B_metric_invBt_half;
         end
     end
 end

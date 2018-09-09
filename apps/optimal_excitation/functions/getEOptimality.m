@@ -1,4 +1,4 @@
-%% Objective Function and its Derivative: Condition Number
+%% Objective Function and its Derivative: E-optimality
 % 2018 Bryan Dongik Lee
 
 %% Inputs
@@ -11,11 +11,11 @@
 
 %% Outputs
 % [Name]  [Description]                               [Size]
-%  f       cond(C)                                     1*1
+%  f       1/lambda_min(C)                             1*1
 %  grad    derivative of condition number of C(p)      m*n
 
 %% Implementation
-function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv, varargin)
+function [f, varargout] = getEOptimality(p, robot, trajectory, sigma_inv, varargin)
     num_opt = 1;    
     if nargin > 4
         num_opt = varargin{1};
@@ -39,12 +39,7 @@ function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv, varargi
     
     [~, indicies] = sort(eigenvalues, 'descend');
     index_opt = indicies(num_opt,1);
-    
-    min_eig = min(eigenvalues);
-    min_ind = find(eigenvalues == min_eig); min_ind = min_ind(1);
-
-    
-    f = eigenvalues(index_opt)/min_eig;
+    f = eigenvalues(index_opt);
     if nargout > 1
         m = size(p,1);
         n = size(p,2);
@@ -54,8 +49,7 @@ function [f, varargout] = getCondNumber(p, robot, trajectory, sigma_inv, varargi
         Qt = Q';
         for i = 1:m
             for j =1:n
-                grad(i,j) = (Qt(min_ind, :) * gradC(:,:,i,j) * Q(:, min_ind))*eigenvalues(index_opt) ...
-                            - (Qt(index_opt, :) * gradC(:,:,i,j) * Q(:, index_opt))*eigenvalues(index_opt)^2/min_eig;
+                grad(i,j) = - (Qt(index_opt, :) * gradC(:,:,i,j) * Q(:, index_opt))*(eigenvalues(index_opt)^2);
             end
         end
         varargout{1} = grad;

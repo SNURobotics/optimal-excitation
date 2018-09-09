@@ -111,7 +111,7 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
     end
     B_metric_invBt_half = sqrtm(B_metric_inv_Bt);
     B_metric_invBt_half = (B_metric_invBt_half+B_metric_invBt_half')/2;
-%     C = sum(sum_A,3) * B_metric_inv_Bt;
+
     C = B_metric_invBt_half* sum(sum_A,3) * B_metric_invBt_half;
-    C = pinv((C+C')/2);
+    C = (C+C')/2;
 end

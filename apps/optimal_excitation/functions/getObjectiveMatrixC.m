@@ -21,8 +21,7 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
     % dynamic parameters
     B = robot.B;
     num_base = size(B,1);
-    mertic_Phi = robot.pd_metric_Phi;    % metric
-    B_metric_inv_Bt = robot.B_metric_inv_Phi_Bt;
+    B_metric_inv_Bt = robot.B_metric_inv_Phi_Bt_0;
     
     G = zeros(6,6,n);   % dummy value
     
@@ -65,5 +64,10 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
         sum_A(:,:,t) = Y_B'*sigma_inv*Y_B;
     end
     
-    C = sum(sum_A,3) * B_metric_inv_Bt;
+    B_metric_invBt_half = sqrtm(B_metric_inv_Bt);
+    B_metric_invBt_half = (B_metric_invBt_half+B_metric_invBt_half')/2;
+
+    C = B_metric_invBt_half* sum(sum_A,3) * B_metric_invBt_half;
+    C = (C+C')/2;
+    
 end

@@ -77,8 +77,18 @@ function robot = makeKukaR820()
     robot.B_metric_inv_Phi_Bt = (robot.B_metric_inv_Phi_Bt+robot.B_metric_inv_Phi_Bt')/2;
 
     
-%     robot.nominal_Phi = zeros(10*robot.dof,1);
-%     for i=1:robot.dof
-%         robot.nominal_Phi(10*(i-1)+1:10*i) = getNominalPhi(robot.Phi(10*(i-1)+1:10*i));
-%     end
+    % nominal phi
+    B = robot.B;
+    robot.Phi_0 = zeros(10*robot.dof,1); 
+    for i = 1:robot.dof
+        robot.Phi_0(1+(i-1)*10:i*10) = getNominalPhi(robot.Phi(1+(i-1)*10:i*10));
+    end
+
+    robot.pd_metric_Phi_0 = zeros(10*robot.dof, 10*robot.dof);
+    for i = 1:robot.dof
+        robot.pd_metric_Phi_0(10*(i-1)+1:10*i, 10*(i-1)+1:10*i) = getPDMetricInertiaPhi(robot.Phi_0(10*(i-1)+1:10*i));
+    end
+
+    robot.B_metric_inv_Phi_Bt_0 = B * pinv(robot.pd_metric_Phi_0) * B';
+    robot.B_metric_inv_Phi_Bt = (robot.B_metric_inv_Phi_Bt + robot.B_metric_inv_Phi_Bt')/2;
 end

@@ -3,9 +3,11 @@ close all
 clear
 clc
 
+warning_handler = warning('query','last');
 rmpath(genpath('apps/optimal_excitation/functions_hexarotor/'));
 rmpath(genpath('apps/optimal_excitation/functions/'));
 addpath(genpath('apps/optimal_excitation/functions_Atlas/'));
+warning('off',warning_handler.identifier);
 
 %% Initialization
 disp('initializing..')
