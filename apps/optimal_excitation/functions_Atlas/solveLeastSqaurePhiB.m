@@ -22,7 +22,7 @@ function Phi_B = solveLeastSqaurePhiB(robot,p,trajectory, sigma)
         [tau, V, Vdot] = solveInverseDynamics(robot.A,robot.M,q(:,t),qdot(:,t),qddot(:,t),robot.G);
         Y = getRegressorRecursive(robot.A,robot.M,q(:,t),V,Vdot);
 
-        b(robot.dof*(t-1)+1:robot.dof*t) = tau + sigma*randn(robot.dof,1);
+        b(robot.dof*(t-1)+1:robot.dof*t) = tau + sqrtm(sigma)*randn(robot.dof,1);
         cummulativeY_B(robot.dof*(t-1)+1:robot.dof*t,:) = Y*B'*pinv(B*B');
     end
     

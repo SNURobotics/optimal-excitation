@@ -17,13 +17,13 @@ function nominal_Phi = getNominalPhi(Phi)
     p = S(1:3,4)/m;
     sigma_bar_c = sigma_bar - p*p';
     
-    variance = 1;
-    nominal_m = m + sqrt(variance)*abs(randn(1));
+    variance = 0.2;
+    nominal_m = m *(1 + variance*(rand(1)-0.5));
     
-    num_sample = 10;
+    num_sample = 50;
     x = zeros(3, num_sample);
     for i=1:num_sample
-        x(:,i) = p + sigma_bar_c * randn(3,1);
+        x(:,i) = p + sqrtm(sigma_bar_c) * randn(3,1);
     end   
     
     nominal_p = mean(x,2);
@@ -35,4 +35,5 @@ function nominal_Phi = getNominalPhi(Phi)
     
     nominal_S = nominal_m * [nominal_sigma_bar_c+nominal_p*nominal_p' nominal_p; nominal_p' 1];
     nominal_Phi = convertInertiaGToPhi(convertInertiaSToG(nominal_S));
+    assert(min(eig(nominal_S))>0)
 end

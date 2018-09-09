@@ -1,8 +1,10 @@
-%% Compute the Objective Matrix C = sum[Y_B'*Sigma^-1*Y_B]B*G(phi_0)*B' and Its Derivative dC/dP
+%% Compute the Objective Matrix C of P2P Spline Trajectory
 % 2018 Bryan Dongik Lee
 
 %% Inputs
 % [Name]      [Description]                                                [Size]
+%  qi          initial pose                                                 n*1
+%  qf          final pose                                                   n*1
 %  p           trajectory parameter to optimize                             m*n
 %  robot       robot object (A, B, M)                                       struct
 %  trajectory  object w/ trajectory parameters                              struct
@@ -13,67 +15,45 @@
 %  C           objective matrix C          num_base*num_base                                          
 
 %% Implementation
-function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
-    %% Initialization
-    n = robot.dof;        % number of joints
-    m = size(p,1);        % number of parameters
+function C = getObjectiveMatrixC_Spline(qi, qf, p, robot, trajectory, sigma_inv)
+    n = robot.dof;
+    sample_time      = linspace(0,trajectory.horizon,trajectory.num_sample);
 
-    stack = CStack();
-    
+    [q, qdot, qddot] = makeSplineP2P(qi,qf,p, trajectory.order, trajectory.horizon, sample_time);
+
     % dynamic parameters
     B = robot.B;
     num_base = size(B,1);
-    mertic_Phi = robot.pd_metric_Phi;    % metric
     B_metric_inv_Bt = robot.B_metric_inv_Phi_Bt;
-        
-    % kinematic variables
-    T           = zeros(4,4,n); % T_{i,i-1}
-    Ad_T        = zeros(6,6,n); % Ad_T_{i,i-1}
-    T_global    = zeros(4,4,n); % T_i0 
-    T_global(:,:,robot.root) = eye(4);
-    Ad_T_global = zeros(6,6,n); % Ad_T_i0
-    Ad_T_global(:,:,robot.root) = eye(6);
-    
-    
-    V_0     = zeros(6,1);       % base velocity
-    Vdot_0  = zeros(6,1);       % base acceleration
-    Vdot_0(6) = 9.8;
 
+    % kinematic parameters
+    A = robot.A;
+    M = robot.M;
+
+    % kinematic variables
+    T           = zeros(4,4,n);         % T_{i,i-1}
+    Ad_T        = zeros(6,6,n);         % Ad_T_{i,i-1}
+    T_global    = zeros(4,4,n);         % T_i0 
+    T_global(:,:,robot.root) = eye(4);
+    Ad_T_global = zeros(6,6,n);         % Ad_T_i0
+    Ad_T_global(:,:,robot.root) = eye(6);
+
+    V_0     = zeros(6,1);               % base velocity
+    Vdot_0  = zeros(6,1);               % base acceleration
+    Vdot_0(6) = 9.8;
 
     V = zeros(6,n);
     Vdot = zeros(6,n);
 
-    
-    % kinematic parameters
-    A = robot.A;
-    M = robot.M;
-        
-    % Spline trajectory parameters
-%     num_sample       = trajectory.num_sample;
-%     horizon          = trajectory.horizon;
-%     trajectory_order = trajectory.order;
-%     sample_time      = linspace(0,horizon,num_sample);
-%     sample_interval  = horizon/num_sample;              % dt for numerical integration
-
-    % Fourier trajectory parameters
-    num_sample       = trajectory.num_sample;
-    horizon          = trajectory.horizon;
-    base_frequency   = trajectory.base_frequency;
-    sample_time      = linspace(0,horizon,num_sample);
-    sample_interval  = horizon/num_sample;                % dt for numerical integration
-
     % size initialization
-    sum_A = zeros(num_base, num_base,num_sample);
-    
-    %% Integration
-    
-    % Spline trajectory generation with parameter p
-%     [q, qdot, qddot]    = makeSpline(p, trajectory_order, horizon, sample_time);
+    Y = zeros(6, 10*robot.dof);
+    sum_A = zeros(num_base, num_base);
 
-    % Spline trajectory generation with parameter p
-    [q, qdot, qddot]    = makeFourier(p, base_frequency, sample_time, (robot.q_max + robot.q_min)/2);
+    % stack for tree traversing
+    stack = CStack();
 
-    for t=1:num_sample
+    % compute C
+    for t=1:trajectory.num_sample
         % get V, Vdot, dV, dVdot from forward recursion      
         stack.push(robot.root);
         while(~stack.isempty)
@@ -86,9 +66,9 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
             % T, Ad_T
             T(:,:,i) = exp_se3(-A(:,i)*q(i,t))*M(:,:,i);
             Ad_T(:,:,i) = large_Ad(T(:,:,i));
-            T_global(:,:,i) = exp_se3(-robot.A(:,i) * q(i,t))* robot.M(:,:,i) *T_global(:,:,robot.tree{i}.parent);
+            T_global(:,:,i) = exp_se3(-A(:,i) * q(i,t))* M(:,:,i) *T_global(:,:,robot.tree{i}.parent);
             Ad_T_global(:,:,i) = large_Ad(T_global(:,:,i));
-            
+
             % V, Vdot
             if i == robot.root
                 V(:,i)    = V_0;
@@ -103,15 +83,17 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
             % Y
             Y(:,10*(i-1)+1:10*i) = Ad_T_global(:,:,i)'*(convertVelocityToRegressor(Vdot(:,i)) - small_ad(V(:,i))'*convertVelocityToRegressor(V(:,i)));
         end
-        
+
         % Y -> YB
         Y_B = Y*B'/(B*B');
-        sum_A(:,:,t) = Y_B'*sigma_inv*Y_B;
-        sum_A(:,:,t) = (sum_A(:,:,t) + sum_A(:,:,t)')/2;
+        sum_A = sum_A + Y_B'*sigma_inv*Y_B;
+        sum_A = (sum_A + sum_A')/2;
     end
+
     B_metric_invBt_half = sqrtm(B_metric_inv_Bt);
     B_metric_invBt_half = (B_metric_invBt_half+B_metric_invBt_half')/2;
-%     C = sum(sum_A,3) * B_metric_inv_Bt;
-    C = B_metric_invBt_half* sum(sum_A,3) * B_metric_invBt_half;
-    C = pinv((C+C')/2);
+
+    C = B_metric_invBt_half * sum_A * B_metric_invBt_half;
+    C = (C+C')/2;
+
 end
