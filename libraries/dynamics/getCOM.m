@@ -1,9 +1,9 @@
-%% Compute the Center of Mass of the Tree Structure Robot
+%% Compute the Center of Mass of a Tree Structure Robot
 % 2018 Bryan Dongik Lee
 
 %% Inputs
 % [Name]      [Description]                     [Size]
-%  robot       robot object (A, B, M)            struct
+%  robot       robot object                      struct
 %  q           joint angles                      n*1
 
 %% Outputs

@@ -5,7 +5,7 @@ clc
 
 warning_handler = warning('query','last');
 rmpath(genpath('apps/optimal_excitation/functions_hexarotor/'));
-rmpath(genpath('apps/optimal_excitation/functions/'));
+rmpath(genpath('apps/optimal_excitation/functions_KUKA/'));
 addpath(genpath('apps/optimal_excitation/functions_Atlas/'));
 warning('off',warning_handler.identifier);
 
@@ -52,61 +52,3 @@ robot.B_metric_inv_Phi_Bt = eye(201);
 
 disp('optimizing w/o metric..')
 [p_baseline,fval_baseline,exitflag_baseline,output_baseline,lam_costate_baseline] = fmincon(@(p)getCondNumber(p,robot,trajectory,sigma_inv), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
-
-
-%% Least-Square Parameter Identification
-disp('solving least square..')
-
-% True Phi_B
-Phi_B = robot.B * robot.Phi;
-num_phi_b = size(Phi_B,1);
-
-num_calibration = 100;
-
-Phi_B_random_traj = zeros(num_phi_b,num_calibration);
-Phi_B_wo_metric   = zeros(num_phi_b,num_calibration);
-Phi_B_w_metric    = zeros(num_phi_b,num_calibration);
-
-parfor i = 1:num_calibration
-    % Random trajecotry
-    Phi_B_random_traj(:,i) = solveLeastSqaurePhiB(robot, p_initial, trajectory, sigma);
-
-    % Optimization w/o metric 
-    Phi_B_wo_metric(:,i) = solveLeastSqaurePhiB(robot, p_baseline, trajectory, sigma);
-
-    % Optimization w/  metric
-    Phi_B_w_metric(:,i) = solveLeastSqaurePhiB(robot, p_optimal, trajectory, sigma);
-    i
-end
-
-weighted_rms_error_random = sqrt(trace(pinv(robot.B_metric_inv_Phi_Bt)*(Phi_B_random_traj-robot.B*robot.Phi)*(Phi_B_random_traj-robot.B*robot.Phi)')/num_calibration);
-weighted_rms_error_baseline = sqrt(trace(pinv(robot.B_metric_inv_Phi_Bt)*(Phi_B_wo_metric-robot.B*robot.Phi)*(Phi_B_wo_metric-robot.B*robot.Phi)')/num_calibration);
-weighted_rms_error_optimal = sqrt(trace(pinv(robot.B_metric_inv_Phi_Bt)*(Phi_B_w_metric-robot.B*robot.Phi)*(Phi_B_w_metric-robot.B*robot.Phi)')/num_calibration);
-
-
-variance_random = var(Phi_B_random_traj, 0 ,2);
-variance_baseline = var(Phi_B_wo_metric, 0 ,2);
-variance_optimal = var(Phi_B_w_metric, 0, 2);
-variance = [variance_random variance_baseline variance_optimal];
-variance_proportion = [variance(:,1)./variance(:,1) variance(:,2)./variance(:,1) variance(:,3)./variance(:,1)];
-
-% X = [Phi_B Phi_B_random_traj  Phi_B_wo_metric Phi_B_w_metric];
-disp('..done')
-
-%% Trajectory Plot
-time_step = 0.1;
-num_time = floor(trajectory.horizon / time_step);
-sample_time = linspace(0,trajectory.horizon,num_time);
-
-q_initial = makeFourier(p_initial, trajectory.base_frequency, sample_time);
-q_optimal = makeFourier(p_optimal, trajectory.base_frequency, sample_time);
-
-figure(); hold on;
-for i = 1:robot.dof
-    subplot(1,robot.dof,i);
-    plot(q_initial(i,:),'b'); hold on;
-    plot(q_optimal(i,:),'r');    
-end
-
-% robot visualization
-appVisualizeKUKA(q_optimal)

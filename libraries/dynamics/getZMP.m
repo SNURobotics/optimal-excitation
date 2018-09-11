@@ -1,4 +1,4 @@
-%% Compute the Center of Mass of the Tree Structure Robot
+%% Compute the Center of Mass of a Tree Structure Robot
 % 2018 Bryan Dongik Lee
 
 %% Inputs
