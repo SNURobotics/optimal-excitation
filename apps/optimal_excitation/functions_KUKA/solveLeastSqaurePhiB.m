@@ -22,7 +22,7 @@ function Phi_B = solveLeastSqaurePhiB(robot,p,trajectory,sigma,max_variance)
    [q, qdot, qddot] = makeFourier(p, trajectory.base_frequency, sample_time);
 
     for t=1:trajectory.num_sample
-        [tau, V, Vdot] = solveInverseDynamics(robot.A,robot.M,q(:,t),qdot(:,t),qddot(:,t),robot.G);
+        [tau, V, Vdot] = solveInverseDynamics(robot.A,robot.M,q(:,t),qdot(:,t),qddot(:,t),robot.G, [0;0;0;0;0;9.8]);
         Y = getRegressorRecursive(robot.A,robot.M,q(:,t),V,Vdot);
 
         b(robot.dof*(t-1)+1:robot.dof*t) = tau + sqrtm(sigma)*randn(robot.dof,1);

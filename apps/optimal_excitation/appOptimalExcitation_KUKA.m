@@ -20,7 +20,7 @@ robot     = makeKukaR820();           % robot model
 
 trajectory.order           = 4;       % B Spline cubic base function
 trajectory.horizon         = 10;      % trajectory horizon
-trajectory.num_sample      = 1000;     % number of samples of the trajectory
+trajectory.num_sample      = 100;     % number of samples of the trajectory
 trajectory.base_frequency  = pi*0.3;  % Fourier trajectory base frequency
 
 sigma     = eye(robot.dof) * 1e-2;    % torque covariance
@@ -68,7 +68,7 @@ while true
     if use_cond_number
         [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getCondNumber(p,robot,trajectory,sigma_inv,num_opt), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
     else
-        [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getEOptimality(p,robot,trajectory,sigma_inv,num_opt), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
+        [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getEOptima66lity(p,robot,trajectory,sigma_inv,num_opt), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
     end
     
     if fval < max_fval
@@ -97,7 +97,7 @@ while true
         break;
     else
         num_opt = num_opt + 1
-        p_initial = p_optimal;
+        p_initial = p_baseline;
     end
 end
 
@@ -108,7 +108,7 @@ load('p_test_kuka.mat');
 % p_test = (rand(m,robot.dof) - 0.5);
 
 
-for iter = 1 : 100
+for iter = 1 : 10
 % w/ metric
 robot.B_metric_inv_Phi_Bt_0 = B * pinv(robot.pd_metric_Phi_0) * B';
 robot.B_metric_inv_Phi_Bt_0 = (robot.B_metric_inv_Phi_Bt_0 + robot.B_metric_inv_Phi_Bt_0')/2;
@@ -124,6 +124,7 @@ for i=1:k
 end
 
 [~, indicies] = sort(eigenvalues, 'descend');
+num_opt = 1;
 index_opt = indicies(num_opt,1);
 max_variance = eigenvalues(index_opt);
 
@@ -143,6 +144,7 @@ for i=1:k
 end
 
 [~, indicies] = sort(eigenvalues, 'descend');
+num_opt = 1;
 index_opt = indicies(num_opt,1);
 max_variance = eigenvalues(index_opt);
 

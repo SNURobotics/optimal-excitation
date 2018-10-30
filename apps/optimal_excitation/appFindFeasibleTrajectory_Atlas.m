@@ -291,7 +291,8 @@ for t = 1:trajectory.num_sample*(num_trajectory/2)
 end
 
 Phi_B = V_neg*lambda_neg*V_neg'*cum_A'*cum_sigma_inv*b + V_pos*V_pos'*pinv(B_metric_inv_Phi_Bt_0)*B*Phi_0;
-Phi_B_pure = inv(cum_A'*cum_sigma_inv*cum_A)*cum_A'*cum_sigma_inv*b;
+% Phi_B_pure = inv(cum_A'*cum_sigma_inv*cum_A)*cum_A'*cum_sigma_inv*b;
+Phi_B_pure = ( V_neg*lambda_neg*V_neg' + V_pos*lambda_pos*V_pos')*cum_A'*cum_sigma_inv*b;
 disp('done');
 
 temp = [Phi_B B*robot.Phi];
@@ -413,7 +414,7 @@ rms(cum_A([1:6:end, 2:6:end, 3:6:end],:)*B*Phi_0-b([1:6:end, 2:6:end, 3:6:end],:
 
 disp('done');
 
-%% Joint Torque Estimation
+%% Joint Torque and Acceleration Estimation
 disp('Running Joint Torque Estimation..')
 
 q = q_total; %q = rand(size(q_total))*pi;
@@ -447,8 +448,14 @@ stack = CStack();
 
 tau = zeros(robot.dof, trajectory.num_sample * (num_trajectory/2));
 tau_predict = zeros(robot.dof, trajectory.num_sample * (num_trajectory/2));
+tau_predict_pure = zeros(robot.dof, trajectory.num_sample * (num_trajectory/2));
+tau_predict_prior = zeros(robot.dof, trajectory.num_sample * (num_trajectory/2));
+
 Y_B_tau_all = zeros((robot.dof)*trajectory.num_sample * (num_trajectory/2), size(B,1));
 
+qddot_error = zeros(robot.dof -1, trajectory.num_sample * (num_trajectory/2));
+qddot_error_pure = zeros(robot.dof -1, trajectory.num_sample * (num_trajectory/2));
+qddot_error_prior = zeros(robot.dof -1, trajectory.num_sample * (num_trajectory/2));
 
 for t=trajectory.num_sample * (num_trajectory/2) + 1:trajectory.num_sample * num_trajectory
     
@@ -480,15 +487,53 @@ for t=trajectory.num_sample * (num_trajectory/2) + 1:trajectory.num_sample * num
     end
     
     Y = getRegressorRecursiveTree(robot, V, Vdot, Ad_T);
-    tau(:,t - trajectory.num_sample * (num_trajectory/2)) = Y([1:12,13, 14:end],:)* robot.Phi;
-    tau_predict(:,t - trajectory.num_sample * (num_trajectory/2)) = Y([1:12,13, 14:end],:)*B'/(B*B') * Phi_B;
+    tau_temp = Y([1:12,13, 14:end],:)* robot.Phi;
+    tau_predict_temp = Y([1:12,13, 14:end],:)*B'/(B*B') * Phi_B;
+    tau_predict_pure_temp = Y([1:12,13, 14:end],:)*B'/(B*B') * Phi_B_pure;
+    tau_predict_prior_temp = Y([1:12,13, 14:end],:)* Phi_0;
+    
+    tau(:,t - trajectory.num_sample * (num_trajectory/2)) = tau_temp;
+    tau_predict(:,t - trajectory.num_sample * (num_trajectory/2)) = tau_predict_temp;
+    tau_predict_pure(:,t - trajectory.num_sample * (num_trajectory/2)) = tau_predict_pure_temp;
+    tau_predict_prior(:,t - trajectory.num_sample * (num_trajectory/2)) = tau_predict_prior_temp;
     Y_B_tau_all(1 + (robot.dof)*(t-1-trajectory.num_sample * (num_trajectory/2)) : (robot.dof)*(t-trajectory.num_sample * (num_trajectory/2)), :) = Y([1:12,13, 14:end],:)*B'/(B*B');
+    
+    inertia_M = getInertiaMatrixMTree(robot,Ad_T);
+    inertia_M = [inertia_M(1:12,1:12) inertia_M(1:12,14:30);
+                 inertia_M(14:30,1:12) inertia_M(14:30,14:30)];
+    qddot_error(:,t - trajectory.num_sample * (num_trajectory/2)) = inertia_M\(tau_temp([1:12, 14:end]) - tau_predict_temp([1:12, 14:end]));
+    qddot_error_pure(:,t - trajectory.num_sample * (num_trajectory/2)) = inertia_M\(tau_temp([1:12, 14:end]) - tau_predict_pure_temp([1:12, 14:end]));
+    qddot_error_prior(:,t - trajectory.num_sample * (num_trajectory/2)) = inertia_M\(tau_temp([1:12, 14:end]) - tau_predict_prior_temp([1:12, 14:end]));
 end
 
-Phi_B
+
 
 % rms(tau(:)-tau_predict(:))
 % rms(Y_B_tau_all*Phi_B - tau(:))
+rms_qddot_error = zeros(robot.dof-1,1);
+rms_qddot_error_pure = zeros(robot.dof-1,1);
+rms_qddot_error_prior = zeros(robot.dof-1,1);
+for i = 1 : robot.dof-1
+rms_qddot_error(i) = rms(qddot_error(i,:));
+rms_qddot_error_pure(i) = rms(qddot_error_pure(i,:));
+rms_qddot_error_prior(i) = rms(qddot_error_prior(i,:));
+end
+figure;
+bar([rms_qddot_error , rms_qddot_error_pure]);
+
+rms_torque_error = zeros(robot.dof-1,1);
+rms_torque_error_pure = zeros(robot.dof-1,1);
+rms_torque_error_prior = zeros(robot.dof-1,1);
+cur = 0;
+for i = [1:12, 14: robot.dof]
+    cur = cur +1;
+rms_torque_error(cur) = rms(tau_predict(i,:)-tau(i,:));
+rms_torque_error_pure(cur) = rms(tau_predict_pure(i,:)-tau(i,:));
+rms_torque_error_prior(cur) = rms(tau_predict_prior(i,:)-tau(i,:));
+end
+figure;
+bar([rms_torque_error , rms_torque_error_pure]);
+
 
 % rms(Y_B_tau_all*(Phi_B-B*robot.Phi))
 figure(1); hold on;

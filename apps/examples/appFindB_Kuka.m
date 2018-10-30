@@ -22,11 +22,11 @@ for iter = 1:num_sample
     qdot = 1000*rand(n,1);
     qddot = 1000*rand(n,1);
 
-    [tau, V, Vdot] = solveInverseDynamics(A,M,q,qdot,qddot,G);
+    [tau, V, Vdot] = solveInverseDynamics(A,M,q,qdot,qddot,G, [0;0;0;0;0;9.8]);
     [Y, W] = getRegressorRecursive(A,M,q,V,Vdot);
         
     cummulativeY(n*(iter-1)+1:n*iter,:) = Y;
 end
 
 [U,S,V] = svd(cummulativeY);
-B = V(:,1:39)'
+B = V(:,1:43)'

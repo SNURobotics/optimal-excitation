@@ -18,7 +18,7 @@ function nominal_Phi = getNominalPhi(Phi)
     sigma_bar_c = sigma_bar - p*p';
     
     % variance parameter for mass
-    variance = 0.2;
+    variance = 0.3;
     nominal_m = m *(1 + variance*(rand(1)-0.5));
     
     % variance paramter for inertia     

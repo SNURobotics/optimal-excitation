@@ -56,7 +56,7 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
 
     parfor t=1:num_sample
         % get V, Vdot, dV, dVdot from forward recursion, use dummy G and F      
-        [tau, V, Vdot, F] = solveInverseDynamics(A,M,q(:,t),qdot(:,t),qddot(:,t),G);
+        [tau, V, Vdot, F] = solveInverseDynamics(A,M,q(:,t),qdot(:,t),qddot(:,t),G, [0;0;0;0;0;9.8]);
 
         % get Y, dY by recursion
         [Y, W] = getRegressorRecursive(A,M,q(:,t),V,Vdot);
