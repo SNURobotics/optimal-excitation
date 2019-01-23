@@ -6,6 +6,7 @@ clc
 warning_handler = warning('query','last');
 rmpath(genpath('apps/optimal_excitation/functions_hexarotor/'));
 rmpath(genpath('apps/optimal_excitation/functions_Atlas/'));
+rmpath(genpath('apps/optimal_excitation/functions_Ambidex/'));
 addpath(genpath('apps/optimal_excitation/functions_KUKA/'));
 warning('off',warning_handler.identifier);
 
@@ -33,7 +34,7 @@ p_initial = rand(m,robot.dof) - 0.5;  % initial p
 
 % find feasible initial p
 while max(max(getConstraint(p_initial,trajectory,robot))) > 0
-    p_initial = (rand(m,robot.dof) - 0.5)/10;
+    p_initial = (rand(m,robot.dof) - 0.5)/2;
 end
 p_initial_0 = p_initial;
 
@@ -68,7 +69,7 @@ while true
     if use_cond_number
         [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getCondNumber(p,robot,trajectory,sigma_inv,num_opt), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
     else
-        [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getEOptima66lity(p,robot,trajectory,sigma_inv,num_opt), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
+        [p_optimal,fval,exitflag,output,lam_costate] = fmincon(@(p)getEOptimality(p,robot,trajectory,sigma_inv,num_opt), p_initial, [], [], [], [], [], [], @(p)getConstraint(p,trajectory,robot), options);
     end
     
     if fval < max_fval
@@ -170,7 +171,7 @@ disp('..done')
 
 %% Trajectory Plot
 if plot_and_visualize
-    time_step = 0.1;
+    time_step = 0.03;
     num_time = floor(trajectory.horizon / time_step);
     sample_time = linspace(0,trajectory.horizon,num_time);
 

@@ -32,6 +32,9 @@ tr
 tr_from_derivative
 
 %%
+trajectory_derivative_val = getSplineDerivative(parameters, basis_order, total_time,[1:10]);
+
+%%
 % trajectory plot
 figure(1)
 title('Parmetric Spline')

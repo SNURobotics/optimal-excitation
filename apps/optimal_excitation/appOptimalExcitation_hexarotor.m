@@ -6,6 +6,7 @@ clc
 warning_handler = warning('query','last');
 rmpath(genpath('apps/optimal_excitation/functions_KUKA/'));
 rmpath(genpath('apps/optimal_excitation/functions_Atlas/'));
+rmpath(genpath('apps/optimal_excitation/functions_Ambidex/'));
 addpath(genpath('apps/optimal_excitation/functions_hexarotor/'));
 warning('off',warning_handler.identifier);
 

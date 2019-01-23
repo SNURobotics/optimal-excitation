@@ -10,6 +10,10 @@ function appVisualizeKUKA(varargin)
     %% Robot Init
     robot = makeKukaR820();
 
+    export_video = true;
+
+    
+    
     n = robot.dof;
     q = zeros(n,1);
     T = zeros(4,4,n);
@@ -41,6 +45,15 @@ function appVisualizeKUKA(varargin)
         fv{i}.vertices = (T(1:3,1:3,i)*fv{i}.vertices' + T(1:3,4,i)*ones(1,size(fv{i}.vertices,1)))';
     end
 
+    %% Video
+    if export_video
+        writerObj = VideoWriter('kuka','MPEG-4'); % 
+        writerObj.FrameRate = 30;
+    
+        % open the video writer
+        open(writerObj);
+    end
+    
     %% Render
     % The model is rendered with a PATCH graphics object. We also add some dynamic
     % lighting, and adjust the material properties to change the specular
@@ -73,7 +86,7 @@ function appVisualizeKUKA(varargin)
     end_effector_M = eye(4);
     end_effector_M(3,4) = 0.125;
     end_effector_T = T(:,:,7) * end_effector_M;
-    end_effector = plot_SE3(end_effector_T);
+%     end_effector = plot_SE3(end_effector_T);
 
     % Add a camera light, and tone down the specular highlighting
     camlight('headlight');
@@ -83,8 +96,23 @@ function appVisualizeKUKA(varargin)
     view([-135 35]);
     getframe;
 
+    %%
+    trajectory_plot = zeros(3,num_time);
+    for time = 1:num_time
+        for i = 1:n
+            T(:,:,i) = solveForwardKinematics(trajectory(1:i,time), robot.A(:,1:i), robot.M(:,:,1:i));
+            fv{i}.vertices = (T(1:3,1:3,i)*fv_zero{i}.vertices' + T(1:3,4,i)*ones(1,size(fv_zero{i}.vertices,1)))';
+            set(render_part{i}, 'Vertices', fv{i}.vertices);
+        end
+
+        end_effector_T = T(:,:,7) * end_effector_M;
+        trajectory_plot(:,time)=end_effector_T(1:3,4);
+    end
+    
+    plot3(trajectory_plot(1,:),trajectory_plot(2,:),trajectory_plot(3,:),'.','Color','r')
+
     %% Animation Loop
-    while(1)
+    for iter =1:1
         for time = 1:num_time
             for i = 1:n
                 T(:,:,i) = solveForwardKinematics(trajectory(1:i,time), robot.A(:,1:i), robot.M(:,:,1:i));
@@ -92,10 +120,19 @@ function appVisualizeKUKA(varargin)
                 set(render_part{i}, 'Vertices', fv{i}.vertices);
             end
 
-            end_effector_T = T(:,:,7) * end_effector_M;
-            plot_SE3(end_effector_T, end_effector);
+%             end_effector_T = T(:,:,7) * end_effector_M;
+%             plot_SE3(end_effector_T, end_effector);
 
-            getframe;
+            frame = getframe(gcf);
+            
+            if export_video
+                writeVideo(writerObj, frame);
+            end
         end
+    end
+    
+    if export_video
+        % close the writer object
+        close(writerObj);
     end
 end

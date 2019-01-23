@@ -77,21 +77,22 @@ function appVisualizeAtlas(varargin)
     axis off;
     xlabel('x'); ylabel('y'); zlabel('z');
     view(95, 10); % view angle
-    bg_color = [0.6 0.8 1]; % figure background color
+    bg_color = [1 1 1]; % figure background color
     set(gcf, 'color', bg_color);
     
     % Add a camera light, and tone down the specular highlighting
-    camlight('headlight');
+    h = light;
+    lightangle(h,120,10) 
     material('dull');
 
     % color parts
-    link_color = ones(robot.dof,3) * 0.9;
-    link_color(1,:) = [0.5 0.5 0.5];
-    link_color(8,:) = [1 0 0];
-    link_color(2,:) = [1 0 0];
-    link_color(12,:) = [1 0 0];
-    link_color(6,:) = [1 0 0];
-    
+    link_color = ones(robot.dof,3) * 0.7;
+%     link_color(1,:) = [0.5 0.5 0.5];
+%     link_color(8,:) = [1 0 0];
+%     link_color(2,:) = [1 0 0];
+%     link_color(12,:) = [1 0 0];
+%     link_color(6,:) = [1 0 0];
+%     
     % video export
     if export_video
         writerObj = VideoWriter('atlas','MPEG-4'); % 
@@ -128,7 +129,7 @@ function appVisualizeAtlas(varargin)
     end
     
     % animation
-    for i = 1:1
+    for i = 1:1000
         for time = 1:speed:num_time
             stack.push(robot.root);
             while(~stack.isempty)
