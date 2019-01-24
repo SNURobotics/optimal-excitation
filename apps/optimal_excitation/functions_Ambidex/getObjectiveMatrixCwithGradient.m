@@ -20,6 +20,18 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
     joints = robot.joints;  % number of joints
     m = size(p,1);          % number of parameters per joint
 
+    excitation_links = robot.excitation_links;
+
+    partial = false;
+    if length(excitation_links) ~= joints
+        partial = true;
+        
+        blocks = zeros(1,length(excitation_links)*10);
+        for i = 1:length(excitation_links)
+            blocks(i*10-9:i*10) = excitation_links(i)*10-9:excitation_links(i)*10;
+        end
+    end
+    
     % dynamic parameters
     B = robot.B;
     num_base = size(B,1);
@@ -47,10 +59,16 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
     sample_interval  = horizon/num_sample;                % dt for numerical integration
 
     % size initialization
-    dY_B = zeros(motors,num_base,m,motors,num_sample);
-    sum_A = zeros(num_base, num_base,num_sample);
-    sum_dA = zeros(num_base, num_base,m,motors,num_sample);
-
+    if partial
+        dY_B = zeros(motors,num_base,m,motors,num_sample);
+        sum_A = zeros(num_base, num_base,num_sample);
+        sum_dA = zeros(num_base, num_base,m,motors,num_sample);
+    else
+        dY_B = zeros(motors,num_base,m,motors,num_sample);
+        sum_A = zeros(num_base, num_base,num_sample);
+        sum_dA = zeros(num_base, num_base,m,motors,num_sample);
+    end
+ 
     J = zeros(joints, motors, num_sample);
     dJ = zeros(joints, motors, m, motors, num_sample);
 
@@ -80,19 +98,20 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
                 dJ(4,4,k,l,t) = dq(4,k,l,t) * gainK(4) * sin(q(4,t))/pow2(cos(q(4,t)));
                 dJ(5,4,k,l,t) = dJ(4,4,k,l,t);
                 
-                dJ(6,5,k,l,t) = dq(6,k,l,t) * gainK(5) * sin(q(6,t))/pow2(cos(q(6,t)));
-                dJ(9,5,k,l,t) = dJ(6,5,k,l,t);
-                
-                dJ(7,5,k,l,t) = (dq(6,k,l,t) * ((sin(q(7,t))/(cos(q(6,t))*cos(q(7,t)))) + (2*pow2(sin(q(6,t)))*sin(q(7,t))/((cos(q(6,t))^3)*cos(q(7,t))))) ...
-                                + dq(7,k,l,t) * ((sin(q(6,t))/pow2(cos(q(6,t)))) + (sin(q(6,t))*pow2(sin(q(7,t)))/(pow2(cos(q(6,t)))*pow2(cos(q(7,t))))))) * gainK(5);
-                dJ(7,6,k,l,t) = (dq(6,k,l,t) * sin(q(6,t))/(pow2(cos(q(6,t)))*cos(q(7,t))) + dq(7,k,l,t)*sin(q(7,t))/(cos(q(6,t))*pow2(cos(q(7,t))))) * gainK(6);
-                dJ(8,5,k,l,t) = dJ(7,5,k,l,t);
+                dJ(7,6,k,l,t) = dq(7,k,l,t) * gainK(6) * sin(q(7,t))/pow2(cos(q(7,t)));
                 dJ(8,6,k,l,t) = dJ(7,6,k,l,t);
+                
+                dJ(6,6,k,l,t) = (dq(7,k,l,t) * ((sin(q(6,t))/(cos(q(6,t))*cos(q(7,t)))) + (2*pow2(sin(q(7,t)))*sin(q(6,t))/((cos(q(7,t))^3)*cos(q(6,t))))) ...
+                                + dq(6,k,l,t) * ((sin(q(7,t))/pow2(cos(q(7,t)))) + (sin(q(7,t))*pow2(sin(q(6,t)))/(pow2(cos(q(6,t)))*pow2(cos(q(7,t))))))) * gainK(6);
+                dJ(6,5,k,l,t) = (dq(6,k,l,t) * sin(q(6,t))/(pow2(cos(q(6,t)))*cos(q(7,t))) + dq(7,k,l,t)*sin(q(7,t))/(cos(q(6,t))*pow2(cos(q(7,t))))) * gainK(5);
+                
+                dJ(9,6,k,l,t) = dJ(6,6,k,l,t);
+                dJ(9,5,k,l,t) = dJ(6,5,k,l,t);
             end
         end
     end
     
-    parfor t=1:num_sample
+    for t=1:num_sample
         % get V, Vdot, dV, dVdot from forward recursion, use dummy G and F      
         [tau, V, Vdot, F] = solveInverseDynamics(A,M,q(:,t),qdot(:,t),qddot(:,t),G, [0;0;0;0;0;9.8]);
         [dtau, dV, dVdot] = solveInverseDynamicsDerivatives(A,M,q(:,t),qdot(:,t),G,V,Vdot,dq(:,:,:,t),dqdot(:,:,:,t),dqddot(:,:,:,t),F,[0;0;0;0;0;9.8]);
@@ -100,15 +119,30 @@ function [C, gradC] = getObjectiveMatrixCwithGradient(p, robot, trajectory, sigm
         % get Y, dY by recursion
         [Y, W] = getRegressorRecursive(A,M,q(:,t),V,Vdot);
         dY = getRegressorDerivativesRecursive(A,M,q(:,t),V,Vdot,dq(:,:,:,t),dV,dVdot,W);
-        Y_B = J(:,:,t)'*Y*B'*pinv(B*B');
+        
+        if partial
+            Y_B = J(:,:,t)'*Y(:,blocks)*B'*pinv(B*B');
+        else
+            Y_B = J(:,:,t)'*Y*B'*pinv(B*B');
+        end        
         sum_A(:,:,t) = Y_B'*sigma_inv*Y_B;
 
-        for k = 1:m
-            for l = 1:motors
-                dY_B(:,:,k,l,t) = (dJ(:,:,k,l,t)'*Y + J(:,:,t)'*dY(:,:,k,l))*B'*pinv(B*B');
-                sum_dA(:,:,k,l,t) = dY_B(:,:,k,l,t)'*sigma_inv*Y_B + Y_B'*sigma_inv*dY_B(:,:,k,l,t);
+        if partial
+            for k = 1:m
+                for l = 1:motors
+                    dY_B(:,:,k,l,t) = (dJ(:,:,k,l,t)'*Y(:,blocks) + J(:,:,t)'*dY(:,blocks,k,l))*B'*pinv(B*B');
+                    sum_dA(:,:,k,l,t) = dY_B(:,:,k,l,t)'*sigma_inv*Y_B + Y_B'*sigma_inv*dY_B(:,:,k,l,t);
+                end
+            end            
+        else
+            for k = 1:m
+                for l = 1:motors
+                    dY_B(:,:,k,l,t) = (dJ(:,:,k,l,t)'*Y + J(:,:,t)'*dY(:,:,k,l))*B'*pinv(B*B');
+                    sum_dA(:,:,k,l,t) = dY_B(:,:,k,l,t)'*sigma_inv*Y_B + Y_B'*sigma_inv*dY_B(:,:,k,l,t);
+                end
             end
         end
+        
     end
     
     B_metric_invBt_half = sqrtm(B_metric_inv_Bt);

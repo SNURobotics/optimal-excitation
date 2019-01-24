@@ -19,6 +19,18 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
     joints = robot.joints;  % number of joints
     m = size(p,1);          % number of parameters per joint
 
+    excitation_links = robot.excitation_links;
+
+    partial = false;
+    if length(excitation_links) ~= joints
+        partial = true;
+        
+        blocks = zeros(1,length(excitation_links)*10);
+        for i = 1:length(excitation_links)
+            blocks(i*10-9:i*10) = excitation_links(i)*10-9:excitation_links(i)*10;
+        end
+    end
+    
     % dynamic parameters
     B = robot.B;
     num_base = size(B,1);
@@ -71,7 +83,11 @@ function C = getObjectiveMatrixC(p, robot, trajectory, sigma_inv)
 
         % get Y, dY by recursion
         [Y, W] = getRegressorRecursive(A,M,q(:,t),V,Vdot);
-        Y_B = J(:,:,t)'*Y*B'*pinv(B*B');
+         if partial
+            Y_B = J(:,:,t)'*Y(:,blocks)*B'*pinv(B*B');
+        else
+            Y_B = J(:,:,t)'*Y*B'*pinv(B*B');
+        end        
         sum_A(:,:,t) = Y_B'*sigma_inv*Y_B;
     end
     

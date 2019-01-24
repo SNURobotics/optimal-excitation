@@ -13,11 +13,18 @@ warning('off',warning_handler.identifier);
 %% Options
 plot_and_visualize = true;
 use_cond_number    = false;
+excitation_links   = 10;
 
 %% Initialization
 disp('initializing..')
 
 robot     = makeAmbidex();           % robot model
+robot.excitation_links = excitation_links;
+
+partial = false;
+if length(excitation_links) ~= robot.joints
+    partial = true;
+end
 
 trajectory.order           = 4;       % B Spline cubic base function
 trajectory.horizon         = 10;      % trajectory horizon
@@ -39,26 +46,50 @@ end
 p_initial_0 = p_initial;
 
 % nominal phi
-B = robot.B;
-num_base = size(B,1);
+if ~partial
+    B = robot.B;
+    num_base = size(B,1);
 
-robot.Phi_0 = zeros(10*robot.joints,1);  % nominal phi
-for i = 1:robot.joints
-    robot.Phi_0(1+(i-1)*10:i*10) = getNominalPhi(robot.Phi(1+(i-1)*10:i*10));
+    robot.Phi_0 = zeros(10*robot.joints,1);  % nominal phi
+    for i = 1:robot.joints
+        robot.Phi_0(1+(i-1)*10:i*10) = getNominalPhi(robot.Phi(1+(i-1)*10:i*10));
+    end
+
+    robot.pd_metric_Phi_0 = zeros(10*robot.joints, 10*robot.joints);
+    for i = 1:robot.joints
+        robot.pd_metric_Phi_0(10*(i-1)+1:10*i, 10*(i-1)+1:10*i) = getPDMetricInertiaPhi(robot.Phi_0(10*(i-1)+1:10*i));
+    end
+
+    robot.B_metric_inv_Phi_Bt_0 = B * pinv(robot.pd_metric_Phi_0) * B';
+    robot.B_metric_inv_Phi_Bt_0 = (robot.B_metric_inv_Phi_Bt_0 + robot.B_metric_inv_Phi_Bt_0')/2;
+else
+    % must set B and Phi
+%     robot.B = [];
+%     robot.Phi = [];
+    robot.B = eye(10);
+    robot.Phi = robot.Phi(91:100);
+   
+    B = robot.B;
+    num_base = size(B,1);
+
+    robot.Phi_0 = zeros(10*length(excitation_links),1);  % nominal phi
+    for i = 1:length(excitation_links)
+        robot.Phi_0(1+(i-1)*10:i*10) = getNominalPhi(robot.Phi(1+(i-1)*10:i*10));
+    end
+
+    robot.pd_metric_Phi_0 = zeros(10*length(excitation_links), 10*length(excitation_links));
+    for i = 1:length(excitation_links)
+        robot.pd_metric_Phi_0(10*(i-1)+1:10*i, 10*(i-1)+1:10*i) = getPDMetricInertiaPhi(robot.Phi_0(10*(i-1)+1:10*i));
+    end
+
+    robot.B_metric_inv_Phi_Bt_0 = B * pinv(robot.pd_metric_Phi_0) * B';
+    robot.B_metric_inv_Phi_Bt_0 = (robot.B_metric_inv_Phi_Bt_0 + robot.B_metric_inv_Phi_Bt_0')/2;
 end
-
-robot.pd_metric_Phi_0 = zeros(10*robot.joints, 10*robot.joints);
-for i = 1:robot.joints
-    robot.pd_metric_Phi_0(10*(i-1)+1:10*i, 10*(i-1)+1:10*i) = getPDMetricInertiaPhi(robot.Phi_0(10*(i-1)+1:10*i));
-end
-
-robot.B_metric_inv_Phi_Bt_0 = B * pinv(robot.pd_metric_Phi_0) * B';
-robot.B_metric_inv_Phi_Bt_0 = (robot.B_metric_inv_Phi_Bt_0 + robot.B_metric_inv_Phi_Bt_0')/2;
 
 
 %% Trajectory Optimization
 
-options = optimoptions(@fmincon,'Algorithm', 'sqp', 'SpecifyObjectiveGradient', true, 'SpecifyConstraintGradient', false, 'TolCon',1e-7,'TolX',1e-5,'MaxFunEvals', ...
+options = optimoptions(@fmincon,'Algorithm', 'sqp', 'SpecifyObjectiveGradient', true, 'SpecifyConstraintGradient', false, 'TolCon',1e-7,'TolX',1e-7,'MaxFunEvals', ...
     1000000,'MaxIter',1000,'Display','iter','Hessian','bfgs'); %'fin-diff-grads'
 
 % w/ metric
@@ -182,7 +213,8 @@ if plot_and_visualize
     for i = 1:robot.motors
         subplot(1,robot.motors,i);
         plot(q_initial(i,:),'b'); hold on;
-        plot(q_optimal(i,:),'r');    
+        plot(q_optimal(i,:),'r');
+        legend('initial', 'optimal');
     end
 
 end
