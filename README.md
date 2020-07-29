@@ -1,3 +1,3 @@
-# Optimal Excitation Trajectory for Mechanical Systems Identification
+# Optimal Excitation
 MATLAB codes for generating optimal excitation trajectories
 
