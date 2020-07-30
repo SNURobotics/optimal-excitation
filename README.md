@@ -7,6 +7,9 @@ Example trajectory generated for robust mechanical system identification
 
 
 
-Exciting!
+
+and some fun extension
 
 <img src="./imgs/dancingmachine.gif" width="480"> &nbsp;
+
+Exciting!
